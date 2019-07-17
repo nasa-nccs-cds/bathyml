@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en"><Esri><CreaDate>20180817</CreaDate><CreaTime>20244400</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.6\ArcToolbox\Toolboxes\Spatial Analyst Tools.tbx\ExtractMultiValuesToPoints" Date="20180817" Time="195923">ExtractMultiValuesToPoints input_JonesPSS "LC08_L1TP_078010_20170628_20170714_01_T1_sr_mystack_ratios.tif 0780SR" NONE</Process></lineage></DataProperties></Esri></metadata>
