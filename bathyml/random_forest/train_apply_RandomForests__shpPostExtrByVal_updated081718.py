@@ -702,8 +702,8 @@ def main():
     # use copy if you want the 2017 bands extracted from 076011_20170630
     # dont use copy if you want 2017 bands extracted from 078010_20170628
     # 'inputRFA_LC08_L1TP_076011_20170630_20170715_01_T1_StackBandsAndRa.shp')# 'inputRFA_'+im_name[0:-8]+'.shp')#'input_RFA.shp')
-#    test_shp = y_test_shp = os.path.join(ddir, 'gis', 'valid_JonesPSS_copy.shp')
-    test_shp = y_test_shp = os.path.join(ddir, 'gis', 'input_JonesPSS_copy.shp')
+    test_shp = y_test_shp = os.path.join(ddir, 'gis', 'valid_JonesPSS_copy.shp')
+#    test_shp = y_test_shp = os.path.join(ddir, 'gis', 'input_JonesPSS_copy.shp')
     # 'validRFA_LC08_L1TP_076011_20170630_20170715_01_T1_StackBandsAndRa.shp')#'validRFA_'+im_name[0:-8]+'.shp')#'valid_RFA.shp')
     print(test_shp, 'is test shp')
 
