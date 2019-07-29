@@ -29,8 +29,12 @@ def plot_test(subplot):
     subplot.plot(range(rf_prediction.shape[0]), rf_prediction, "r--", label="rf_test_prediction")
 
 
-subplots = plt.subplots(1, 2)
-plot_test(subplots[1][0])
-plot_training(subplots[1][1])
+#subplots = plt.subplots(1, 2)
+#plot_test(subplots[1][0])
+#plot_training(subplots[1][1])
+
+subplots = plt.subplots()
+plot_test(subplots[1])
+#plot_training(subplots[1][1])
 
 plt.show()

@@ -731,6 +731,7 @@ def main():
     fid_test = X_test[:, len(bands)].astype(int)  # all rows and the last column (8th col, but index pos is 7)
     X_test = X_test[:, :len(bands)]
     X_train = X_train[:, :len(bands)]
+
     print('shape of X_train:', X_train.shape)
     print( 'N bands:', bands )
 
