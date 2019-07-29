@@ -27,16 +27,17 @@ learningRate=0.01
 momentum=0.9
 shuffle=False
 decay=0.
-nRuns = 3
+nRuns = 5
 nesterov=False
 initWtsMethod="glorot_uniform"   # lecun_uniform glorot_normal glorot_uniform he_normal lecun_normal he_uniform
 activation='relu' # 'tanh'
+nSegments = 10
 
 print( f"TensorBoard log dir: {tb_log_dir}")
 
 def get_model( index, weights = None ) -> Sequential:
     model = Sequential()
-    model.add( Dense( units=24, activation=activation, input_dim=nBands, kernel_initializer = initWtsMethod ) )
+    model.add( Dense( units=32, activation=activation, input_dim=nBands, kernel_initializer = initWtsMethod ) )
     model.add( Dense( units=1, kernel_initializer = initWtsMethod ) )
     sgd = SGD(learningRate, momentum, decay, nesterov)
     model.compile(loss='mse', optimizer=sgd, metrics=['accuracy'])
@@ -47,16 +48,22 @@ def get_model( index, weights = None ) -> Sequential:
         models[index] = model
     return model
 
+
 x_train: np.ndarray = read_csv_data( "temp_X_train.csv", nBands )
 y_train: np.ndarray = read_csv_data( "temp_Y_train.csv" )
 nTrainSamples = x_train.shape[0]
+
+reindexer = []
+for iSeg in range(nSegments): reindexer = reindexer + list( range( iSeg, nTrainSamples, nSegments ) )
+x_train_reindexed = x_train[reindexer]
+y_train_reindexed = y_train[reindexer]
 
 x_valid: np.ndarray = read_csv_data( "temp_X_test.csv", nBands )
 y_valid: np.ndarray = read_csv_data( "temp_Y_test.csv" )
 nValidSamples = x_valid.shape[0]
 
-x_train_valid = np.concatenate( (x_train,x_valid) )
-y_train_valid = np.concatenate( (y_train,y_valid) )
+x_train_valid = np.concatenate( (x_train_reindexed,x_valid) )
+y_train_valid = np.concatenate( (y_train_reindexed,y_valid) )
 nSamples = x_train_valid.shape[0]
 validation_fraction = nValidSamples/nSamples
 print( f"#Training samples: {nTrainSamples}, #Validation samples: {nValidSamples}, #Total samples: {nSamples}, validation_fraction: {validation_fraction}")
@@ -79,6 +86,7 @@ for model_index in range( nRuns ):
         min_index = total_loss.tolist().index(min_loss)
         best_model_index = model_index
 
+print( f"Plotting results from model {best_model_index}, N training epocs: {min_index}")
 best_model = models[best_model_index]
 test_model = get_model( nRuns, init_weights[best_model_index] )
 tensorboard = TensorBoard(log_dir=f"{tb_log_dir}/{time()}")
