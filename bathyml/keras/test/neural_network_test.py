@@ -31,7 +31,7 @@ nRuns = 5
 nesterov=False
 initWtsMethod="glorot_uniform"   # lecun_uniform glorot_normal glorot_uniform he_normal lecun_normal he_uniform
 activation='relu' # 'tanh'
-nSegments = 10
+nSegments = 1
 
 print( f"TensorBoard log dir: {tb_log_dir}")
 
@@ -54,9 +54,10 @@ y_train: np.ndarray = read_csv_data( "temp_Y_train.csv" )
 nTrainSamples = x_train.shape[0]
 
 reindexer = []
-for iSeg in range(nSegments): reindexer = reindexer + list( range( iSeg, nTrainSamples, nSegments ) )
-x_train_reindexed = x_train[reindexer]
-y_train_reindexed = y_train[reindexer]
+if nSegments > 1:
+    for iSeg in range(nSegments): reindexer = reindexer + list( range( iSeg, nTrainSamples, nSegments ) )
+x_train_reindexed = x_train[reindexer] if nSegments > 1 else x_train
+y_train_reindexed = y_train[reindexer] if nSegments > 1 else y_train
 
 x_valid: np.ndarray = read_csv_data( "temp_X_test.csv", nBands )
 y_valid: np.ndarray = read_csv_data( "temp_Y_test.csv" )
