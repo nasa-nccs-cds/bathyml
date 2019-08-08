@@ -12,9 +12,10 @@ def plot_training(subplot):
 
     rf_prediction = np.loadtxt( rf_prediction_data, delimiter=',')
     y_training    = np.loadtxt( y_training_data,    delimiter=',')
-
+    subplot.set_title("Training Data")
     subplot.plot(range(y_training.shape[0]), y_training, "g--", label="y_training" )
     subplot.plot(range(rf_prediction.shape[0]), rf_prediction, "y--", label="rf_training_prediction" )
+    subplot.legend()
 
 
 
@@ -24,17 +25,14 @@ def plot_test(subplot):
 
     rf_prediction = np.loadtxt(rf_prediction_data, delimiter=',')
     y_training = np.loadtxt(y_training_data, delimiter=',')
-
+    subplot.set_title( "Verification Data")
     subplot.plot(range(y_training.shape[0]), y_training, "b--", label="y_test")
     subplot.plot(range(rf_prediction.shape[0]), rf_prediction, "r--", label="rf_test_prediction")
+    subplot.legend()
 
 
-#subplots = plt.subplots(1, 2)
-#plot_test(subplots[1][0])
-#plot_training(subplots[1][1])
-
-subplots = plt.subplots()
-plot_test(subplots[1])
-#plot_training(subplots[1][1])
+subplots = plt.subplots(1, 2)
+plot_test(subplots[1][0])
+plot_training(subplots[1][1])
 
 plt.show()

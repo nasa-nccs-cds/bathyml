@@ -19,17 +19,17 @@ if not os.path.exists(outDir): os.makedirs( outDir )
 ddir = os.path.join(DATA, "csv")
 tb_log_dir=f"{ddir}/logs/tb"
 nBands = 21
-nEpochs = 1200
+nEpochs = 1000
 learningRate=0.01
 momentum=0.9
-shuffle=True
+shuffle=False
 useValidation = False
 decay=0.
 nRuns = 1
 poly_degree = 1
 nesterov=False
 initWtsMethod="glorot_uniform"   # lecun_uniform glorot_normal glorot_uniform he_normal lecun_normal he_uniform
-activation='tanh' # 'tanh'
+activation='elu' # 'elu' 'tanh'
 
 def getLayers3( input_dim ):
     return  [   Dense( units=64, activation=activation, input_dim=input_dim, kernel_initializer = initWtsMethod ),
@@ -58,7 +58,7 @@ print( f"TensorBoard log dir: {tb_log_dir}")
 
 def get_model( index, weights = None ) -> Sequential:
     model = Sequential()
-    for layer in getLayers2(nBands): model.add( layer )
+    for layer in getLayers3(nBands): model.add( layer )
     sgd = SGD(learningRate, momentum, decay, nesterov)
     model.compile(loss='mse', optimizer=sgd, metrics=['accuracy'])
     if weights is not None:
@@ -99,18 +99,16 @@ if __name__ == '__main__':
         x_valid = poly.transform(x_valid)
     nValidSamples = x_valid.shape[0]
 
-    x_train_valid = np.concatenate( (x_train,x_valid) )
-    y_train_valid = np.concatenate( (y_train,y_valid) )
-    nSamples = x_train_valid.shape[0]
-    input_dim = x_train_valid.shape[1]
+    nSamples = x_train.shape[0]
+    input_dim = x_train.shape[1]
     validation_fraction = nValidSamples/nSamples if useValidation else 0.0
-    xmax, xmin = list(x_train_valid.max(axis=0).tolist()), list(x_train_valid.min(axis=0).tolist())
-    ymax, ymin = y_train_valid.max(), y_train_valid.min()
+    xmax, xmin = list(x_train.max(axis=0).tolist()), list(x_train.min(axis=0).tolist())
+    ymax, ymin = y_train.max(), y_train.min()
     print( f"InputDim: {input_dim}, #Training samples: {nTrainSamples}, #Validation samples: {nValidSamples}, #Total samples: {nSamples}, validation_fraction: {validation_fraction}, xmax = {xmax}, xmin = {xmin}, ymax = {ymax}, ymin = {ymin}")
-    x_train_valid = normalize( x_train_valid )
-    y_train_valid = normalize( y_train_valid )
-    xmax, xmin = list(x_train_valid.max(axis=0).tolist()), list(x_train_valid.min(axis=0).tolist())
-    ymax, ymin = y_train_valid.max(), y_train_valid.min()
+    x_train = normalize( x_train )
+    y_train = normalize( y_train )
+    xmax, xmin = list(x_train.max(axis=0).tolist()), list(x_train.min(axis=0).tolist())
+    ymax, ymin = y_train.max(), y_train.min()
     print( f"NORMALIZED xmax = {xmax}, xmin = {xmin}, ymax = {ymax}, ymin = {ymin}")
 
     ens_min_loss = sys.float_info.max
@@ -121,7 +119,7 @@ if __name__ == '__main__':
     for model_index in range( nRuns ):
         model = get_poly_model(model_index,input_dim) if poly_degree > 1 else get_model(model_index)
         tensorboard = TensorBoard(log_dir=f"{tb_log_dir}/{time()}")
-        history[model_index] = model.fit( x_train_valid, y_train_valid, epochs=nEpochs, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard] )
+        history[model_index] = model.fit( x_train, y_train, epochs=nEpochs, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard] )
         train_loss = np.array( history[model_index].history['loss'] )
         min_train_loss = train_loss.min(axis=0, initial=sys.float_info.max)
         if validation_fraction > 0:
@@ -145,7 +143,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(log_dir=f"{tb_log_dir}/{time()}")
     if validation_fraction > 0:
         test_model = get_model( nRuns, init_weights[best_model_index] )
-        history = test_model.fit(x_train_valid, y_train_valid, epochs=min_index, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard])
+        history = test_model.fit(x_train, y_train, epochs=min_index, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard])
     else:
         test_model = best_model
 

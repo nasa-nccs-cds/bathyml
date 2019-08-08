@@ -743,16 +743,21 @@ def main():
     prediction =  rf.predict(X_test)
     np.savetxt(outfile, prediction, delimiter=",")
 
-    # 3rd step: apply model
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'training_prediction.csv')
+    prediction =  rf.predict(X_train)
+    np.savetxt(outfile, prediction, delimiter=",")
+
+    # # 3rd step: apply model
     print("\nApplying model to rest of imagery")
     print("model save:", model_save)
     apply_model(img, imgProperties, classDir, model_save)
-    # 4th step: run diagnostics
-    run_diagnostics(model_save, X_test, y_test, fid_test)
 
-    elapsed = round(find_elapsed_time(start, timer()), 3)
-
-    print("\n\nElapsed time = {}".format(elapsed), "mins")
+    # # 4th step: run diagnostics
+    # run_diagnostics(model_save, X_test, y_test, fid_test)
+    #
+    # elapsed = round(find_elapsed_time(start, timer()), 3)
+    #
+    # print("\n\nElapsed time = {}".format(elapsed), "mins")
 
 
 ### FOR PROJECT: Run the model with different parameters:
