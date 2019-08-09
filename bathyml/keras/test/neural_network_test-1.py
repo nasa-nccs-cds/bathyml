@@ -19,21 +19,27 @@ if not os.path.exists(outDir): os.makedirs( outDir )
 ddir = os.path.join(DATA, "csv")
 tb_log_dir=f"{ddir}/logs/tb"
 nBands = 21
-nEpochs = 1000
+nEpochs = 500
 learningRate=0.01
 momentum=0.9
-shuffle=False
-useValidation = False
+shuffle=True
+validation_fraction = 0.2
 decay=0.
 nRuns = 1
 poly_degree = 1
 nesterov=False
 initWtsMethod="glorot_uniform"   # lecun_uniform glorot_normal glorot_uniform he_normal lecun_normal he_uniform
-activation='elu' # 'elu' 'tanh'
+activation='tanh' # 'tanh'
 
 def getLayers3( input_dim ):
     return  [   Dense( units=64, activation=activation, input_dim=input_dim, kernel_initializer = initWtsMethod ),
                 Dense( units=32, activation=activation, kernel_initializer = initWtsMethod ),
+                Dense( units=1, kernel_initializer = initWtsMethod )  ]
+
+def getLayers4( input_dim ):
+    return  [   Dense( units=64, activation=activation, input_dim=input_dim, kernel_initializer = initWtsMethod ),
+                Dense( units=32, activation=activation, kernel_initializer = initWtsMethod ),
+                Dense( units=8, activation=activation, kernel_initializer=initWtsMethod),
                 Dense( units=1, kernel_initializer = initWtsMethod )  ]
 
 def getLayers2( input_dim ):
@@ -53,6 +59,18 @@ def normalize( array: np.ndarray, scale = 1.5 ):
     ave = array.mean( axis=0 )
     std = array.std( axis=0 )
     return (array-ave)/(scale*std)
+
+def interleave( a0: np.ndarray, a1: np.ndarray ) -> np.ndarray:
+    alen = min( a0.shape[0], a1.shape[0] )
+    if len( a0.shape ) == 1:
+        result = np.empty( ( 2*alen ) )
+        result[0::2] = a0[0:alen]
+        result[1::2] = a1[0:alen]
+    else:
+        result = np.empty( ( 2*alen, a0.shape[1] ) )
+        result[0::2, :] = a0[0:alen]
+        result[1::2, :] = a1[0:alen]
+    return result
 
 print( f"TensorBoard log dir: {tb_log_dir}")
 
@@ -89,7 +107,6 @@ if __name__ == '__main__':
         poly = PolynomialFeatures(poly_degree)
         poly.fit(x_train)
         x_train = poly.transform(x_train)
-    nTrainSamples = x_train.shape[0]
 
     x_valid: np.ndarray = read_csv_data( "temp_X_test.csv", nBands )
     y_valid: np.ndarray = read_csv_data( "temp_Y_test.csv" )
@@ -97,18 +114,25 @@ if __name__ == '__main__':
         poly = PolynomialFeatures(poly_degree)
         poly.fit(x_valid)
         x_valid = poly.transform(x_valid)
-    nValidSamples = x_valid.shape[0]
 
-    nSamples = x_train.shape[0]
-    input_dim = x_train.shape[1]
-    validation_fraction = nValidSamples/nSamples if useValidation else 0.0
-    xmax, xmin = list(x_train.max(axis=0).tolist()), list(x_train.min(axis=0).tolist())
-    ymax, ymin = y_train.max(), y_train.min()
+    print( f"x_train sample: {x_train[0:3].tolist()}")
+    x_train_valid = interleave( x_train,x_valid )
+    print(f"INTERLEAVED x_train sample: {x_train_valid[0:3].tolist()}")
+    print(f"y_train sample: {y_train[0:3].tolist()}")
+    y_train_valid = interleave( y_train,y_valid )
+    print(f"INTERLEAVED y_train sample: {y_train_valid[0:3].tolist()}")
+    print( f" x_train_valid shape = {x_train_valid.shape}, x_train shape = {x_train.shape}, x_valid shape = {x_valid.shape}, " )
+    nSamples = x_train_valid.shape[0]
+    nValidSamples = int( round(nSamples*validation_fraction) )
+    nTrainSamples = nSamples - nValidSamples
+    input_dim = x_train_valid.shape[1]
+    xmax, xmin = list(x_train_valid.max(axis=0).tolist()), list(x_train_valid.min(axis=0).tolist())
+    ymax, ymin = y_train_valid.max(), y_train_valid.min()
     print( f"InputDim: {input_dim}, #Training samples: {nTrainSamples}, #Validation samples: {nValidSamples}, #Total samples: {nSamples}, validation_fraction: {validation_fraction}, xmax = {xmax}, xmin = {xmin}, ymax = {ymax}, ymin = {ymin}")
-    x_train = normalize( x_train )
-    y_train = normalize( y_train )
-    xmax, xmin = list(x_train.max(axis=0).tolist()), list(x_train.min(axis=0).tolist())
-    ymax, ymin = y_train.max(), y_train.min()
+    x_train_valid = normalize( x_train_valid )
+    y_train_valid = normalize( y_train_valid )
+    xmax, xmin = list(x_train_valid.max(axis=0).tolist()), list(x_train_valid.min(axis=0).tolist())
+    ymax, ymin = y_train_valid.max(), y_train_valid.min()
     print( f"NORMALIZED xmax = {xmax}, xmin = {xmin}, ymax = {ymax}, ymin = {ymin}")
 
     ens_min_loss = sys.float_info.max
@@ -119,7 +143,7 @@ if __name__ == '__main__':
     for model_index in range( nRuns ):
         model = get_poly_model(model_index,input_dim) if poly_degree > 1 else get_model(model_index)
         tensorboard = TensorBoard(log_dir=f"{tb_log_dir}/{time()}")
-        history[model_index] = model.fit( x_train, y_train, epochs=nEpochs, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard] )
+        history[model_index] = model.fit( x_train_valid, y_train_valid, epochs=nEpochs, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard] )
         train_loss = np.array( history[model_index].history['loss'] )
         min_train_loss = train_loss.min(axis=0, initial=sys.float_info.max)
         if validation_fraction > 0:
@@ -143,7 +167,7 @@ if __name__ == '__main__':
     tensorboard = TensorBoard(log_dir=f"{tb_log_dir}/{time()}")
     if validation_fraction > 0:
         test_model = get_model( nRuns, init_weights[best_model_index] )
-        history = test_model.fit(x_train, y_train, epochs=min_index, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard])
+        history = test_model.fit(x_train_valid, y_train_valid, epochs=min_index, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard])
     else:
         test_model = best_model
 
@@ -152,16 +176,16 @@ if __name__ == '__main__':
 
     ax0 = plt.subplot("211")
     ax0.set_title("Validation Data")
-    prediction_valid = test_model.predict( normalize( x_valid ) )
-    ax0.plot(range(y_valid.shape[0]), normalize( y_valid ), "b--", label="validation data")
+    prediction_valid = test_model.predict( x_train_valid[nTrainSamples:] )
+    ax0.plot(range(nTrainSamples), y_train_valid[nTrainSamples:], "b--", label="validation data")
     ax0.plot(range(prediction_valid.shape[0]), prediction_valid, "r--", label="prediction")
     ax0.legend()
 
     ax1 = plt.subplot("212")
     ax1.set_title("Training Data")
-    prediction_train = test_model.predict( normalize( x_train ) )
-    ax1.plot(range(y_train.shape[0]), normalize( y_train ), "b--", label="training data")
-    ax1.plot(range(prediction_train.shape[0]), prediction_train, "r--", label="prediction")
+    prediction_train = test_model.predict( x_train_valid[:nTrainSamples] )
+    ax1.plot(range(y_train.shape[0]), y_train_valid[:nTrainSamples], "b--", label="training data")
+    ax1.plot(range(nTrainSamples), prediction_train, "r--", label="prediction")
     ax1.legend()
 
     saved_model_path = os.path.join( outDir, f"model.{datetime.now().strftime('%m-%d-%H-%M-%S')}")
