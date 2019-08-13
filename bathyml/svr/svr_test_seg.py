@@ -1,16 +1,17 @@
 from bathyml.common.data import *
 import matplotlib.pyplot as plt
+from typing import List, Optional, Tuple, Dict, Any
 from sklearn import svm
 from time import time
 from datetime import datetime
 
-svmArgs = dict(
-    C=1.0,
+svmArgs: Dict = dict(
+    C=5.0,
     cache_size=400,
     coef0=0.0,
     degree=3,
     epsilon=0.1,
-    gamma=0.1,
+    gamma=2.0,
     kernel='rbf',
     max_iter=-1,
     shrinking=True,
@@ -18,7 +19,7 @@ svmArgs = dict(
     verbose=False )
 
 validation_fraction = 0.2
-network_label = f"SVM-{svmArgs['kernel']}-{svmArgs['C']:.2f}-{svmArgs['gamma']:.2f}"
+network_label = "-".join( [ "SVM", svmArgs['kernel'], str(svmArgs['C']), str(svmArgs['gamma']) ] )
 nRuns = 1
 
 if __name__ == '__main__':
@@ -36,26 +37,35 @@ if __name__ == '__main__':
     ens_min_loss = sys.float_info.max
     best_model = None
     best_prediction_validation = None
-    best_prediction_training = None
 
-    for c in np.logspace(-2, 2, 5):
-        for g in np.logspace(-2, 2, 5):
+    C_range = [ 0.5, 1.0, 2.0, 5.0, 10.0 ]
+    gamma_range = [ 0.5, 1.0, 1.5, 2.0, 2.5, 5.0 ]
+    results = {}
+    best_C = None
+    best_g = None
+
+    for c in C_range:
+        for g in gamma_range:
             svmArgs['C'] = c
             svmArgs['gamma'] = g
             model = svm.SVR( **svmArgs )
-            print( f"Fitting Model, c={c}, gamma={g}" )
+            print( f"Fitting Model, C={svmArgs['C']}, gamma={svmArgs['gamma']}" )
             model.fit( x_train_valid[:nTrainSamples], y_train_valid[:nTrainSamples] )
             print("Creating Prediction")
             prediction_validation = model.predict( x_train_valid[nTrainSamples:] )
             train_loss = abs(prediction_validation - y_train_valid[nTrainSamples:]).mean()
+            print(f"Validation Loss = {train_loss}")
 
             if train_loss < ens_min_loss:
                 ens_min_loss = train_loss
                 best_model = model
                 best_prediction_validation = prediction_validation
-                best_prediction_training = model.predict( x_train_valid[:nTrainSamples] )
+                best_C = c
+                best_g = g
 
-    print( f"Plotting results (loss={ens_min_loss})")
+    best_prediction_training = best_model.predict( x_train_valid[:nTrainSamples] )
+
+    print( f"Plotting results: loss={ens_min_loss}, C={best_C}, gamma={best_g}")
     fig = plt.figure()
     # fig.suptitle( "Performance Plots: Target (blue) vs Prediction (red)", fontsize=12 )
 
