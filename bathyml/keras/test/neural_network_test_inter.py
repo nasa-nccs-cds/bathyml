@@ -19,12 +19,11 @@ if not os.path.exists(outDir): os.makedirs( outDir )
 ddir = os.path.join(DATA, "csv")
 tb_log_dir=f"{ddir}/logs/tb"
 nBands = 21
-nEpochs = 800
+nEpochs = 1000
 learningRate=0.01
 momentum=0.9
 shuffle=True
 useValidation = True
-valfrac = None
 decay=0.
 nRuns = 1
 poly_degree = 1
@@ -33,8 +32,8 @@ initWtsMethod="glorot_uniform"   # lecun_uniform glorot_normal glorot_uniform he
 activation='tanh' # 'tanh'
 
 def getLayers3( input_dim ):
-    return  [   Dense( units=64, activation=activation, input_dim=input_dim, kernel_initializer = initWtsMethod ),
-                Dense( units=32, activation=activation, kernel_initializer = initWtsMethod ),
+    return  [   Dense( units=32, activation=activation, input_dim=input_dim, kernel_initializer = initWtsMethod ),
+                Dense( units=8, activation=activation, kernel_initializer = initWtsMethod ),
                 Dense( units=1, kernel_initializer = initWtsMethod )  ]
 
 def getLayers4( input_dim ):
@@ -44,7 +43,7 @@ def getLayers4( input_dim ):
                 Dense( units=1, kernel_initializer = initWtsMethod )  ]
 
 def getLayers2( input_dim ):
-    return [   Dense( units=32, activation=activation, input_dim=input_dim, kernel_initializer = initWtsMethod ),
+    return [   Dense( units=64, activation=activation, input_dim=input_dim, kernel_initializer = initWtsMethod ),
                Dense( units=1, kernel_initializer = initWtsMethod )  ]
 
 def getLayers1( input_dim ):
@@ -65,7 +64,7 @@ print( f"TensorBoard log dir: {tb_log_dir}")
 
 def get_model( index, weights = None ) -> Sequential:
     model = Sequential()
-    for layer in getLayers3(nBands): model.add( layer )
+    for layer in getLayers2(nBands): model.add( layer )
     sgd = SGD(learningRate, momentum, decay, nesterov)
     model.compile(loss='mse', optimizer=sgd, metrics=['accuracy'])
     if weights is not None:
@@ -77,7 +76,7 @@ def get_model( index, weights = None ) -> Sequential:
 
 def get_poly_model( index, input_dim, weights = None ) -> Sequential:
     model = Sequential()
-    for layer in getLayers1(input_dim): model.add( layer )
+    for layer in getLayers2(input_dim): model.add( layer )
     sgd = SGD(learningRate, momentum, decay, nesterov)
     model.compile(loss='mse', optimizer=sgd, metrics=['accuracy'])
     if weights is not None:
@@ -88,21 +87,13 @@ def get_poly_model( index, input_dim, weights = None ) -> Sequential:
     return model
 
 def getTrainingData( x_train, y_train, x_valid, y_valid ):
-    if valfrac is None:
-        x_train_valid = np.concatenate( (x_train,x_valid) )
-        y_train_valid = np.concatenate( (y_train,y_valid) )
-        nSamples = x_train_valid.shape[0]
-        validation_fraction = nValidSamples/nSamples if useValidation else 0.0
-    else:
-        x_train_valid = x_train
-        y_train_valid = y_train
-        validation_fraction = valfrac
-
+    x_train_valid = np.concatenate( (x_train,x_valid) )
+    y_train_valid = np.concatenate( (y_train,y_valid) )
+    nSamples = x_train_valid.shape[0]
+    validation_fraction = nValidSamples/nSamples if useValidation else 0.0
     x_train_valid = normalize(x_train_valid)
     y_train_valid = normalize(y_train_valid)
     return x_train_valid, y_train_valid, validation_fraction
-
-
 
 if __name__ == '__main__':
     x_train: np.ndarray = read_csv_data( "temp_X_train_inter.csv", nBands )

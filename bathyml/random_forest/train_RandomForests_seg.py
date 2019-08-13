@@ -19,7 +19,7 @@ print("starting script...")
 # Import GDAL, NumPy, and matplotlib
 import sys, os
 from osgeo import gdal, gdal_array, ogr
-import numpy as np
+import math, numpy as np
 import matplotlib.pyplot as plt
 ##%matplotlib inline # IPython
 from sklearn.ensemble import RandomForestRegressor  # Classifier # CHANGED bc I have continuous data
@@ -41,7 +41,7 @@ gdal.AllRegister()
 gdal.UseExceptions()  # enable exceptions to report errors
 drvtif = gdal.GetDriverByName("GTiff")
 
-n_trees = 100
+n_trees = 70 # 100
 max_feat = 'sqrt'  # 'log2'
 modelName = '{}_{}'.format(n_trees, max_feat)  # 'try3' # to distinguish between parameters of each model
 
@@ -104,10 +104,16 @@ if yn == 'y' or yn =='Y' or yn == 'yes':
 
 #
 folder_output = im_name[0:-8] + '_' + str(n_trees) + '_' + max_feat  # dont change this..
+folder_input = "LC08_L1TP_076011_20170630_20170715_01_T1_StackBandsAndRatios_6b_100_sqrt"
+output_dir = os.path.join( ddir, 'RandomForestTests', 'RFA_Outputs', folder_output )
 
 # 'RandomForestTests' #extension from ddir where to find raster for classification
 
 out_xls_path = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, '')
+
+modelDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'Models')  # , '{}_{}'.format(extentName, modelName)) #C #Model output location
+classDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'Classified')  # , extentName) #C #Location for output classification
+logDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'Logs')  # C
 
 
 # where to output summary/accuracy table
@@ -512,14 +518,14 @@ def train_model(X, y, modelDir, n_trees, max_feat):
 
     print('oob score:', rf.oob_score_)
 
-    # Export model:
-    try:
-        model_save = os.path.join(modelDir, "model_{}_{}.pkl".format(extentName, modelName))
-        joblib.dump(rf, model_save)
-    except Exception as e:
-        print("An Error: {}".format(e))
+    # # Export model:
+    # try:
+    #     model_save = os.path.join(modelDir, "model_{}_{}.pkl".format(extentName, modelName))
+    #     joblib.dump(rf, model_save)
+    # except Exception as e:
+    #     print("An Error: {}".format(e))
 
-    return rf, model_save  # Return output model for application and validation
+    return rf
 
 
 def get_test_training_sets(inputText):  # CS doesnt use this function
@@ -613,144 +619,125 @@ def get_test_training_sets_CS(X_train_file, X_test_file, y_train_file, y_test_fi
     return (X_train, X_test, y_train, y_test)
 
 
-"""Function to convert stack and sample imagery into X and y [not yet split into training/validation]"""
-# CHANGE:  won't need this function bc my data already in csv format, however need to get gt, proj, etc.
-# to write bathymetry to tiff at end use specs of VHR stack instead
-# script never uses this function anyway..?
-"""
-def convert_img_to_Xy_data(VHRstack, sampleTif): 
-    # Given a data stack and sample tiff, we can convert these into X and y for Random Forests
-    print "now running: convert img to Xy data"
-    ##Read in the raster stack and training data to numpy array: 
-    img_ds = gdal.Open(VHRstack, gdal.GA_ReadOnly) # GDAL dataset
-    roi_ds = gdal.Open(trainTif, gdal.GA_ReadOnly) #should this bc sampleTif??
+def interleave( a0: np.ndarray, a1: np.ndarray ) -> np.ndarray:
+    alen = min( a0.shape[0], a1.shape[0] )
+    if len( a0.shape ) == 1:
+        result = np.empty( ( 2*alen ) )
+        result[0::2] = a0[0:alen]
+        result[1::2] = a1[0:alen]
+    else:
+        result = np.empty( ( 2*alen, a0.shape[1] ) )
+        result[0::2, :] = a0[0:alen]
+        result[1::2, :] = a1[0:alen]
+    return result
 
-    ##get geo metadata so we can write the classification back to tiff 
-    gt = img_ds.GetGeoTransform()
-    proj = img_ds.GetProjection()
-    ncols = img_ds.RasterXSize
-    nrows = img_ds.RasterYSize
-    ndval = img_ds.GetRasterBand(1).GetNoDataValue() # should be -999 for all layers, unless using scene as input
+def normalize( array: np.ndarray, scale = 1.5 ):
+    ave = array.mean( axis=0 )
+    std = array.std( axis=0 )
+    return (array-ave)/(scale*std)
 
-    imgProperties = (gt, proj, ncols, nrows, ndval)
-
-    # Read data stack into array 
-    img = np.zeros((nrows, ncols, img_ds.RasterCount), gdal_array.GDALTypeCodeToNumericTypeCode(img_ds.GetRasterBand(1).DataType))
-    for b in range(img.shape[2]): # the 3rd index of img.shape gives us the number of bands in the stack
-        print '\nb: {}'.format(b)
-        img[:, :, b] = img_ds.GetRasterBand(b + 1).ReadAsArray() # GDAL is 1-based while Python is 0-based
-        print 'mean of band:',np.mean(img_ds.GetRasterBand(b+1).ReadAsArray())
-
-    #Read Training dataset into numpy array 
-    roi = roi_ds.GetRasterBand(1).ReadAsArray().astype(np.float32) #used to be uint8 CHNAGED!
-    roi_nd = roi_ds.GetRasterBand(1).GetNoDataValue() # get no data value of training dataset
-    roi[roi==roi_nd] = 0 # Convert the No Data pixels in raster to 0 for the model
-
-    X = img[roi > 0, :]  # Data Stack pixels
-    y = roi[roi > 0]     # Training pixels
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state = 21)
-
-    del img_ds, roi_ds
-    return (X_train, X_test, y_train, y_test)
-"""
-
-
-def main():
-    print("starting main...")
-    start = timer()
-    # Set up directories: NEED TO CHANGE VHS and train DIRS (script makes down model, class and log dirs)*********** 
-    # /RandomForestsTest' #'/att/gpfsfs/briskfs01/ppl/mwooten3/Myanmar/RandomForests/'
-    # ********* CHANGE THIS^: my folder path
-    ######*************************************
+def read_band_data( validation_fraction ):
 
     bandExtr_fieldList = ['b2_0760NA', 'b3_0760NA', 'b4_0760NA', 'b5_0760NA', 'b6_0760NA', 'b7_0760NA', 'b14_0760NA',
                           'b15_0760NA', 'b16_0760NA', 'b17_0760NA', 'b18_0760NA', 'b19_0760NA', 'b20_0760NA', 'b21_0760NA',
                           'b22_0760NA', 'b23_0760NA', 'b24_0760NA', 'b25_0760NA', 'b26_0760NA', 'b27_0760NA', 'b28_0760NA']
 
-    bandExtr_fieldList1 = ['b1_0780SR', 'b2_0780SR', 'b3_0780SR', 'b4_0780SR', 'b5_0780SR', 'b6_0780SR', 'b7_0780SR',
-                           'b8_0780SR', 'b9_0780SR', 'b10_0780SR', 'b11_0780SR', 'b12_0780SR', 'b13_0780SR', 'b14_0780SR',
-                           'b15_0780SR', 'b16_0780SR', 'b17_0780SR', 'b18_0780SR', 'b19_0780SR', 'b20_0780SR', 'b21_0780SR']
-    # ['b'+str(i)+'_'+rasID+refl for i in xrange(1,len(bands)+1)]
-
-    # bandExtr_fieldList = ['b'+str(i) +'_0780SR' for i in range(1,7)]
-    print("Field List:", bandExtr_fieldList)
     print(len(bandExtr_fieldList), 'is length of band extract field list')
 
-    # ? will these be created in loop below? 
-    modelDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output,
-                            'Models')  # , '{}_{}'.format(extentName, modelName)) #C #Model output location
-    classDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'Classified')  # , extentName) #C #Location for output classification
-    # i.e. bathymetry raster created by RF model
-    logDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'Logs')  # C
 
     for d in [modelDir, classDir, logDir]:
         os.system('mkdir -p {}'.format(d))
-
-    print("done making dirs")
-
-    # Log processing:
-    print("done log processing")
-
-    # os.path.join(VHRdir, im_name)#'DataStack__{}.tif'.format(extentName))
-    # ^ Stack of VHR data (Multispec and Pan) //only covers [all North Slope, not just lakes w/ in situ data] lakes! 
-    # & make other pixels have no data valu
-
-    # take in shapefile and extract raster values at those points, export band vals to csv to use to train model as inputX
-    # not a big deal which shps you input just as long as they're derived from correct InputX_FID and ValidX_FID csvs
     train_shp = os.path.join(ddir, 'gis', 'input_JonesPSS_copy.shp')
-    # use copy if you want the 2017 bands extracted from 076011_20170630
-    # dont use copy if you want 2017 bands extracted from 078010_20170628
-    # 'inputRFA_LC08_L1TP_076011_20170630_20170715_01_T1_StackBandsAndRa.shp')# 'inputRFA_'+im_name[0:-8]+'.shp')#'input_RFA.shp')
     test_shp = y_test_shp = os.path.join(ddir, 'gis', 'valid_JonesPSS_copy.shp')
-#    test_shp = y_test_shp = os.path.join(ddir, 'gis', 'input_JonesPSS_copy.shp')
-    # 'validRFA_LC08_L1TP_076011_20170630_20170715_01_T1_StackBandsAndRa.shp')#'validRFA_'+im_name[0:-8]+'.shp')#'valid_RFA.shp')
     print(test_shp, 'is test shp')
 
     (img, imgProperties) = stack_to_obj(VHRstack)
+    X_train_inter, y_train_inter = GetBandValsAsArray(shp=train_shp, fields=bandExtr_fieldList, ndval=imgProperties[4])
+    X_test_inter, y_test_inter   = GetBandValsAsArray(shp=test_shp, fields=bandExtr_fieldList, ndval=imgProperties[4])
+    X_test_inter:  np.ndarray  = X_test_inter[:, :len(bands)]
+    X_train_inter: np.ndarray = X_train_inter[:, :len(bands)]
+    X_data = interleave( X_test_inter, X_train_inter )
+    y_data = interleave( y_test_inter, y_train_inter)
 
-    X_train, y_train = GetBandValsAsArray(shp=train_shp, fields=bandExtr_fieldList, ndval=imgProperties[4])
-    print("in main, type of X_train is:", X_train.dtype, y_train.dtype, 'is type of ytrain')
 
-    X_test, y_test = GetBandValsAsArray(shp=test_shp, fields=bandExtr_fieldList, ndval=imgProperties[4])
+    NSamples = X_data.shape[0]
+    NValidationSamples = int( round( NSamples * validation_fraction ) )
+    NTrainSamples = NSamples - NValidationSamples
 
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_X_train.csv')
-    np.savetxt(outfile, X_train, delimiter=",")
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_Y_test.csv')
-    np.savetxt(outfile, y_test, delimiter=",")
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_Y_train.csv')
-    np.savetxt(outfile, y_train, delimiter=",")
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_X_test.csv')
+    X_train= X_data[:NTrainSamples]
+    X_test = X_data[NTrainSamples:]
+    y_train= y_data[:NTrainSamples]
+    y_test = y_data[NTrainSamples:]
+
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, f'temp_X_test_seg-{validation_fraction:4.2f}.csv')
     np.savetxt(outfile, X_test, delimiter=",")
-    # 1st step: get_test_training_sets
-    # IF input is csv file, use this method
-    """Before calling the model train or apply, read and configure the inputs into test and train """
-    # inputText = '/att/gpfsfs/briskfs01/ppl/mwooten3/Myanmar/RandomForests/TrainingData/Myanmar_5class_training.csv'
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, f'temp_X_train_seg-{validation_fraction:4.2f}.csv')
+    np.savetxt(outfile, X_train, delimiter=",")
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, f'temp_Y_test_seg-{validation_fraction:4.2f}.csv')
+    np.savetxt(outfile, y_test, delimiter=",")
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, f'temp_Y_train_seg-{validation_fraction:4.2f}.csv')
+    np.savetxt(outfile, y_train, delimiter=",")
 
-    ##    # if input is an image stack and training tif, use this: 
-    fid_test = X_test[:, len(bands)].astype(int)  # all rows and the last column (8th col, but index pos is 7)
-    X_test = X_test[:, :len(bands)]
-    X_train = X_train[:, :len(bands)]
-
-    print('shape of X_train:', X_train.shape)
+    print(f'Data shapes->> X_train: {X_train.shape},  X_test: {X_test.shape},  y_train: {y_train.shape},  y_test: {y_test.shape}' )
     print( 'N bands:', bands )
+    return X_train, X_test, y_train, y_test
+
+def read_csv_data( validation_fraction ):
+
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_input, f'temp_X_test_seg.csv')
+    X_test = np.loadtxt( outfile, delimiter=',')
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_input, f'temp_X_train_seg.csv')
+    X_train = np.loadtxt( outfile, delimiter=',')
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_input, f'temp_Y_test_seg.csv')
+    y_test = np.loadtxt( outfile, delimiter=',')
+    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_input, f'temp_Y_train_seg.csv')
+    y_train = np.loadtxt( outfile, delimiter=',')
+    return normalize(X_train), normalize(X_test), normalize(y_train), normalize(y_test)
+
+def main():
+    validation_fraction = 0.2
+    try: os.makedirs(output_dir)
+    except: pass
+    ( X_train, X_test, y_train, y_test ) = read_csv_data(validation_fraction)
 
     # Train and apply models:
     print("Building model with n_trees={} and max_feat={}...".format(n_trees, max_feat))
-    rf, model_save = train_model(X_train, y_train, modelDir, n_trees, max_feat)
+    rf = train_model(X_train, y_train, modelDir, n_trees, max_feat)
 
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'test_prediction.csv')
-    prediction =  rf.predict(X_test)
-    np.savetxt(outfile, prediction, delimiter=",")
+    outfile_train = os.path.join( output_dir, 'training_prediction_seg.csv' )
+    train_prediction = rf.predict( X_train )
+    np.savetxt(outfile_train, train_prediction, delimiter=",")
 
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'training_prediction.csv')
-    prediction =  rf.predict(X_train)
-    np.savetxt(outfile, prediction, delimiter=",")
+    outfile_valid = os.path.join( output_dir, 'test_prediction_seg.csv')
+    test_prediction =  rf.predict(X_test)
+    np.savetxt(outfile_valid, test_prediction, delimiter=",")
 
-    # # 3rd step: apply model
-    print("\nApplying model to rest of imagery")
-    print("model save:", model_save)
-    apply_model(img, imgProperties, classDir, model_save)
+    print(f"Saved results to {outfile_train} and {outfile_valid}")
+    subplots = plt.subplots(2, 1)
+
+    subplot = subplots[1][0]
+    subplot.set_title(f" {n_trees}T Training Data")
+    subplot.plot(range(y_train.shape[0]), y_train, "g--", label="y_training" )
+    subplot.plot(range(train_prediction.shape[0]), train_prediction, "y--", label="rf_training_prediction" )
+    subplot.legend()
+
+    diff = y_test - test_prediction
+    mse = math.sqrt( (diff*diff).mean() )
+    subplot = subplots[1][1]
+    subplot.set_title( f" {n_trees}T Verification Data: MSE = {mse:.2f}")
+    subplot.plot(range(y_test.shape[0]), y_test, "b-", label="y_test")
+    subplot.plot(range(test_prediction.shape[0]), test_prediction, "r-", label="rf_test_prediction")
+    subplot.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+
+    # # # 3rd step: apply model
+    # print("\nApplying model to rest of imagery")
+    # print("model save:", model_save)
+    # apply_model(img, imgProperties, classDir, model_save)
 
     # # 4th step: run diagnostics
     # run_diagnostics(model_save, X_test, y_test, fid_test)

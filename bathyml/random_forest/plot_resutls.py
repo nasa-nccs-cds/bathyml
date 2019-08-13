@@ -1,15 +1,16 @@
 import os, numpy as np
 import matplotlib.pyplot as plt
-from bathyml.random_forest.train_apply_RandomForests__shpPostExtrByVal_updated081718 import folder_output
+from bathyml.random_forest.train_RandomForests_seg import folder_output, folder_input
 
-dtype = "inter"
-outDir = os.path.expanduser("~/results")
+dtype = "seg"
 HERE = os.path.dirname(os.path.abspath(__file__))
 ddir = os.path.join( os.path.dirname( os.path.dirname(HERE) ), "data" )
+outDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output )
+inDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_input )
 
 def plot_training(subplot):
-    rf_prediction_data = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'training_prediction.csv')
-    y_training_data =    os.path.join(ddir, "csv", f"temp_Y_train_{dtype}.csv")
+    rf_prediction_data = os.path.join(outDir, f'training_prediction_{dtype}.csv')
+    y_training_data =    os.path.join(inDir, f"temp_Y_train_{dtype}.csv")
 
     rf_prediction = np.loadtxt( rf_prediction_data, delimiter=',')
     y_training    = np.loadtxt( y_training_data,    delimiter=',')
@@ -21,8 +22,8 @@ def plot_training(subplot):
 
 
 def plot_test(subplot):
-    rf_prediction_data = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'test_prediction.csv')
-    y_training_data = os.path.join(ddir, "csv", f"temp_Y_test_{dtype}.csv")
+    rf_prediction_data = os.path.join(outDir, f'test_prediction_{dtype}.csv')
+    y_training_data =    os.path.join(inDir, f"temp_Y_test_{dtype}.csv")
 
     rf_prediction = np.loadtxt(rf_prediction_data, delimiter=',')
     y_training = np.loadtxt(y_training_data, delimiter=',')
@@ -32,6 +33,7 @@ def plot_test(subplot):
     subplot.legend()
 
 
+print( f"Plotting results from outDir {outDir}")
 subplots = plt.subplots(2, 1)
 
 plot_training(subplots[1][0])
