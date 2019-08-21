@@ -3,11 +3,39 @@ import matplotlib.pyplot as plt
 from typing import List, Optional, Tuple, Dict, Any
 from sklearn import svm
 from sklearn.decomposition import PCA
-from sklearn import preprocessing
+from sklearn import preprocessing, neighbors
 from time import time
 from datetime import datetime
+from sklearn.neural_network import MLPRegressor
+from sklearn.gaussian_process import GaussianProcessRegressor
 
-svmArgs: Dict = dict(
+modelParms = dict(
+  nnr=dict(
+    n_neighbors=60,
+    weights='uniform',  # 'uniform','distance'
+    algorithm='auto',
+    leaf_size=30,
+    p=2,
+    metric='minkowski',
+    metric_params=None,
+    n_jobs=None,
+    model_handles_validation=False,
+    p0_range=[60],
+    p1_range=[0.5]
+),
+  gpr=dict(
+    kernel=None,
+    alpha=5.0,
+    optimizer="fmin_l_bfgs_b",
+    n_restarts_optimizer=5,
+    normalize_y=True,
+    copy_X_train=True,
+    random_state=None,
+    model_handles_validation=False,
+    p0_range = [ 5.0 ],
+    p1_range = [0.5]
+  ),
+  svr = dict(
     C=5.0,
     cache_size=500,
     coef0=0.0,
@@ -18,16 +46,71 @@ svmArgs: Dict = dict(
     max_iter=-1,
     shrinking=True,
     tol=0.001,
-    verbose=False )
+    verbose=False,
+    model_handles_validation = False,
+    p0_range = [ 5.0 ],
+    p1_range = [ 0.5 ]
+  ),
+  mlp = dict(
+    hidden_layer_sizes=(32,),
+    activation="tanh",
+    solver='adam',
+    alpha=1e-06,
+    batch_size='auto',
+    learning_rate="invscaling", # ""constant",
+    learning_rate_init=0.01,
+    power_t=0.1,  # 0.5,
+    max_iter=500,
+    shuffle=True,
+    random_state=None,
+    tol=1e-4,
+    verbose=False,
+    warm_start=False,
+    momentum=0.9,
+    nesterovs_momentum=True,
+    early_stopping=True,
+    validation_fraction=0.2,
+    beta_1=0.9,
+    beta_2=0.999,
+    epsilon=1e-8,
+    n_iter_no_change=10,
+    model_handles_validation = True,
+    p0_range = [ 0.0, 0.0000001, 0.000001, 0.00001 ],
+    p1_range = [ 0.1, 0.2, 0.3, 0.4 ]
+  ),
+)
 
-validation_fraction = 0.2
 pca_components = 0 # 14
 whiten = False
+modelType = "nnr"
+validation_fraction=0.2
 
 def get_parm_name( svmArgs: Dict ) -> str:
     kernel = svmArgs["kernel"]
     if kernel.lower() == "rbf": return "gamma"
     else: return "coef0"
+
+def getModel( modelType, p0, p1 ):
+    params = modelParms[modelType]
+    if modelType == "svr":
+        params['C'] = p0
+        params['gamma'] = p1
+        return svm.SVR(**params)
+        print(f"Fitting {modelType} Model, kernel={params['kernel']}, C={p0}, gamma={p1}")
+    elif modelType == "mlp":
+        params['alpha'] = p0
+        params['power_t'] = p1
+        print(f"Fitting {modelType} Model, alpha={p0}")
+        return MLPRegressor(**params)
+    elif modelType == "gpr":
+        params['alpha'] = p0
+        print(f"Fitting {modelType} Model, alpha={p0}")
+        return GaussianProcessRegressor(**params)
+    elif modelType == "nnr":
+        params['n_neighbors'] = p0
+        print(f"Fitting {modelType} Model, n_neighbors={p0}")
+        return neighbors.KNeighborsRegressor (**params)
+    else: raise Exception( f" Unknown Model type: {modelType}")
 
 if __name__ == '__main__':
     print("Reading Data")
@@ -35,6 +118,7 @@ if __name__ == '__main__':
     y_train: np.ndarray = read_csv_data( "temp_Y_train_inter.csv" )
     x_valid: np.ndarray = read_csv_data( "temp_X_test_inter.csv", nBands )
     y_valid: np.ndarray = read_csv_data( "temp_Y_test_inter.csv" )
+    mParams = modelParms[modelType]
 
     x_data, y_data = getTrainingData( x_train, y_train, x_valid, y_valid )
 
@@ -55,6 +139,12 @@ if __name__ == '__main__':
     y_train = y_data[:NTrainingElems]
     y_test =  y_data[NTrainingElems:]
 
+    model_handles_validation =  mParams.pop('model_handles_validation')
+    if model_handles_validation:
+        xfit, yfit = x_data_norm, y_data
+    else:
+        xfit, yfit = x_train, y_train
+
     ref_mse = math.sqrt( (y_test*y_test).mean() )
     print( f" y_train MSE = {ref_mse} MAX={y_test.max()}")
 
@@ -62,32 +152,30 @@ if __name__ == '__main__':
     best_model = None
     best_prediction_validation = None
 
-    C_range = [ 5.0 ]
-    parm_range = [  0.5 ]
+    p0_range = mParams.pop('p0_range')
+    p1_range = mParams.pop('p1_range')
     results = {}
-    best_C = None
-    best_p = None
+    best_p0 = None
+    best_p1 = None
 
-    for c in C_range:
-        for p in parm_range:
-            svmArgs['C'] = c
-            svmArgs[ 'gamma' ] = p
-            model = svm.SVR( **svmArgs )
-            model.fit( x_train, y_train )
+    for p0 in p0_range:
+        for p1 in p1_range:
+            model = getModel( modelType, p0, p1 )
+            model.fit( xfit, yfit )
             prediction_validation = model.predict( x_test )
             diff = prediction_validation - y_test
-            train_loss = math.sqrt( (diff*diff).mean() )
-            print(f"Fitting Model, kernel={svmArgs['kernel']}, C={c}, gamma={p}, Validation Loss = {train_loss}" )
+            validation_loss = math.sqrt( (diff*diff).mean() )
+            print(f" --> loss={validation_loss}")
 
-            if train_loss < ens_min_loss:
-                ens_min_loss = train_loss
+            if validation_loss < ens_min_loss:
+                ens_min_loss = validation_loss
                 best_model = model
                 best_prediction_validation = prediction_validation
-                best_C = c
-                best_p = p
+                best_p0 = p0
+                best_p1 = p1
 
     best_prediction_training = best_model.predict( x_train )
-    model_label = "-".join(["SVM", svmArgs['kernel'], str(best_C), str(best_p)])
+    model_label = "-".join([ modelType, str(best_p0), str(best_p1)] )
     print( f"Plotting results: loss={ens_min_loss}, model={model_label}")
     fig = plt.figure()
     # fig.suptitle( "Performance Plots: Target (blue) vs Prediction (red)", fontsize=12 )

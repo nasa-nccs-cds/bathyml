@@ -1,33 +1,23 @@
 from bathyml.common.data import *
 import matplotlib.pyplot as plt
 from typing import List, Optional, Tuple, Dict, Any
-from sklearn import svm
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.decomposition import PCA
 from sklearn import preprocessing
 from time import time
 from datetime import datetime
 
-svmArgs: Dict = dict(
-    C=5.0,
-    cache_size=500,
-    coef0=0.0,
+krrArgs: Dict = dict(
+    kernel_params=None,
+    coef0=1,
     degree=3,
-    epsilon=0.1,
+    alpha=1.0,
     gamma=2.0,
-    kernel='rbf',
-    max_iter=-1,
-    shrinking=True,
-    tol=0.001,
-    verbose=False )
+    kernel='rbf' )
 
 validation_fraction = 0.2
 pca_components = 0 # 14
 whiten = False
-
-def get_parm_name( svmArgs: Dict ) -> str:
-    kernel = svmArgs["kernel"]
-    if kernel.lower() == "rbf": return "gamma"
-    else: return "coef0"
 
 if __name__ == '__main__':
     print("Reading Data")
@@ -54,57 +44,54 @@ if __name__ == '__main__':
     x_test =  x_data_norm[NTrainingElems:]
     y_train = y_data[:NTrainingElems]
     y_test =  y_data[NTrainingElems:]
-
-    ref_mse = math.sqrt( (y_test*y_test).mean() )
-    print( f" y_train MSE = {ref_mse} MAX={y_test.max()}")
-
     ens_min_loss = sys.float_info.max
     best_model = None
     best_prediction_validation = None
 
-    C_range = [ 5.0 ]
-    parm_range = [  0.5 ]
+    alpha_range = [ 1.0 ]
+    gamma_range = [ 0.1 ]
     results = {}
-    best_C = None
-    best_p = None
+    best_alpha = None
+    best_gamma = None
 
-    for c in C_range:
-        for p in parm_range:
-            svmArgs['C'] = c
-            svmArgs[ 'gamma' ] = p
-            model = svm.SVR( **svmArgs )
+    for a in alpha_range:
+        for g in gamma_range:
+            krrArgs['alpha'] = a
+            krrArgs[ 'gamma' ] = g
+            model = KernelRidge( **krrArgs )
             model.fit( x_train, y_train )
             prediction_validation = model.predict( x_test )
             diff = prediction_validation - y_test
             train_loss = math.sqrt( (diff*diff).mean() )
-            print(f"Fitting Model, kernel={svmArgs['kernel']}, C={c}, gamma={p}, Validation Loss = {train_loss}" )
+            print(f"Fitting Model, kernel={krrArgs['kernel']}, A={a}, gamma={g}, Validation Loss = {train_loss}" )
 
             if train_loss < ens_min_loss:
                 ens_min_loss = train_loss
                 best_model = model
                 best_prediction_validation = prediction_validation
-                best_C = c
-                best_p = p
+                best_alpha = a
+                best_gamma = g
 
-    best_prediction_training = best_model.predict( x_train )
-    model_label = "-".join(["SVM", svmArgs['kernel'], str(best_C), str(best_p)])
-    print( f"Plotting results: loss={ens_min_loss}, model={model_label}")
+    best_prediction_training = best_model.predict( x_train ) 
+    model_label = "-".join(["KRR", krrArgs['kernel'], str(best_alpha), str(best_gamma)])
+    ref_loss =  math.sqrt( (best_prediction_validation*best_prediction_validation).mean() )
+    print( f"Plotting results: loss={ens_min_loss}, model={model_label}, ref loss = {ref_loss}")
     fig = plt.figure()
     # fig.suptitle( "Performance Plots: Target (blue) vs Prediction (red)", fontsize=12 )
 
     diff = y_train - best_prediction_training
     mse = math.sqrt((diff * diff).mean())
     ax0 = plt.subplot("211")
-    ax0.set_title( f"{model_label} Training Data MSE = {mse:.2f} ")
+    ax0.set_title( f"{model_label} Training Data  MSE = {mse:.2f}")
     xaxis = range(best_prediction_training.shape[0])
     ax0.plot(xaxis, y_train, "b--", label="validation data")
     ax0.plot(xaxis, best_prediction_training, "r--", label="prediction")
     ax0.legend()
 
     diff = y_test - best_prediction_validation
-    ref_mse = math.sqrt( (y_test*y_test).mean() )
     mse = math.sqrt((diff * diff).mean())
-    print( f" REF MSE = {ref_mse} ")
+    ref_mse = math.sqrt( (y_test*y_test).mean() )
+    print( f" REF MSE = {ref_mse} ymax = {y_test.max()}")
     ax1 = plt.subplot("212")
     ax1.set_title( f"{model_label} Validation Data MSE = {mse:.2f} " )
     xaxis = range(best_prediction_validation.shape[0])

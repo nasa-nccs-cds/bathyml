@@ -20,11 +20,14 @@ print("starting script...")
 import sys, os
 from osgeo import gdal, gdal_array, ogr
 import math, numpy as np
+from sklearn.decomposition import PCA
+from sklearn import preprocessing
 import matplotlib.pyplot as plt
 ##%matplotlib inline # IPython
 from sklearn.ensemble import RandomForestRegressor  # Classifier # CHANGED bc I have continuous data
 from sklearn.externals import joblib
 from sklearn.model_selection import train_test_split
+from bathyml.common.data import *
 import pandas as pd
 from timeit import default_timer as timer
 from bathyml.logging import BathmlLogger
@@ -41,8 +44,9 @@ gdal.AllRegister()
 gdal.UseExceptions()  # enable exceptions to report errors
 drvtif = gdal.GetDriverByName("GTiff")
 
-n_trees = 70 # 100
-max_feat = 'sqrt'  # 'log2'
+n_trees = 30
+max_feat = 'sqrt'  # 'log2'  'sqrt'
+max_depth = 10
 modelName = '{}_{}'.format(n_trees, max_feat)  # 'try3' # to distinguish between parameters of each model
 
 extentName = ''  # sys.argv[1]#'qA' # model number or name, so we can save to different directories
@@ -490,7 +494,7 @@ def apply_model(img, imgProperties, classDir, model_save):  # VHR stack we are a
 
 
 # To train the model, you need: input text file/csv i.e. x_train and y_train, model output location, model parameters
-def train_model(X, y, modelDir, n_trees, max_feat):
+def train_model(X, y, modelDir, n_trees, max_feat, max_depth ):
     print("training model in progress")
     # y = np.array([y])
     print('y to train model: type is', type(y), 'shape is', y.shape)
@@ -511,7 +515,7 @@ def train_model(X, y, modelDir, n_trees, max_feat):
     print("\nInitializing model...")
     # rf = RandomForestClassifier(n_estimators=n_trees, max_features=max_feat, oob_score=True) # can change/add other settings later
     # CHANGED to below!
-    rf = RandomForestRegressor(n_estimators=n_trees, max_features=max_feat, oob_score=True)  # can change/add other settings later
+    rf = RandomForestRegressor(n_estimators=n_trees, max_features=max_feat, max_depth=max_depth, oob_score=True)  # can change/add other settings later
     ravel_y = y.ravel()  # to convert to 1 dimensional array
     print("\nTraining model...")
     rf.fit(X, ravel_y)  # fit model to training data
@@ -682,7 +686,7 @@ def read_band_data( validation_fraction ):
     print( 'N bands:', bands )
     return X_train, X_test, y_train, y_test
 
-def read_csv_data( validation_fraction ):
+def read_csv_data_RFA( validation_fraction ):
 
     outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_input, f'temp_X_test_seg.csv')
     X_test = np.loadtxt( outfile, delimiter=',')
@@ -692,17 +696,46 @@ def read_csv_data( validation_fraction ):
     y_test = np.loadtxt( outfile, delimiter=',')
     outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_input, f'temp_Y_train_seg.csv')
     y_train = np.loadtxt( outfile, delimiter=',')
-    return normalize(X_train), normalize(X_test), normalize(y_train), normalize(y_test)
+    return X_train, X_test, y_train, y_test
 
-def main():
+
+
+if __name__ == '__main__':
     validation_fraction = 0.2
     try: os.makedirs(output_dir)
     except: pass
-    ( X_train, X_test, y_train, y_test ) = read_csv_data(validation_fraction)
+    pca_components = 0
+    whiten = False
+    nBands = 21
+
+    print("Reading Data")
+    x_train: np.ndarray = read_csv_data( "temp_X_train_inter.csv", nBands )
+    y_train: np.ndarray = read_csv_data( "temp_Y_train_inter.csv" )
+    x_valid: np.ndarray = read_csv_data( "temp_X_test_inter.csv", nBands )
+    y_valid: np.ndarray = read_csv_data( "temp_Y_test_inter.csv" )
+
+    x_data, y_data = getTrainingData( x_train, y_train, x_valid, y_valid )
+
+    if pca_components > 0:
+        pca = PCA( n_components = pca_components, whiten=whiten )
+        x_data_norm = pca.fit( x_data ).transform( x_data )
+        if not whiten: x_data_norm = preprocessing.scale( x_data_norm )
+        print(f'PCA: explained variance ratio ({pca_components} components): {pca.explained_variance_ratio_}' )
+    else:
+        x_data_norm = preprocessing.scale( x_data )
+
+    input_dim = x_train.shape[1]
+    NValidationElems = int( round( x_data.shape[0] * validation_fraction ) )
+    NTrainingElems = x_data.shape[0] - NValidationElems
+
+    X_train = x_data_norm[:NTrainingElems]
+    X_test =  x_data_norm[NTrainingElems:]
+    y_train = y_data[:NTrainingElems]
+    y_test =  y_data[NTrainingElems:]
 
     # Train and apply models:
     print("Building model with n_trees={} and max_feat={}...".format(n_trees, max_feat))
-    rf = train_model(X_train, y_train, modelDir, n_trees, max_feat)
+    rf = train_model(X_train, y_train, modelDir, n_trees, max_feat, max_depth )
 
     outfile_train = os.path.join( output_dir, 'training_prediction_seg.csv' )
     train_prediction = rf.predict( X_train )
@@ -715,14 +748,18 @@ def main():
     print(f"Saved results to {outfile_train} and {outfile_valid}")
     subplots = plt.subplots(2, 1)
 
+    diff = y_train - train_prediction
+    mse = math.sqrt((diff * diff).mean())
     subplot = subplots[1][0]
-    subplot.set_title(f" {n_trees}T Training Data")
+    subplot.set_title(f" {n_trees}T Training Data: MSE = {mse:.2f}")
     subplot.plot(range(y_train.shape[0]), y_train, "g--", label="y_training" )
     subplot.plot(range(train_prediction.shape[0]), train_prediction, "y--", label="rf_training_prediction" )
     subplot.legend()
 
     diff = y_test - test_prediction
-    mse = math.sqrt( (diff*diff).mean() )
+    ref_mse = math.sqrt( (y_test*y_test).mean() )
+    mse = math.sqrt((diff * diff).mean())
+    print( f" REF MSE = {ref_mse} ymax = {y_test.max()}")
     subplot = subplots[1][1]
     subplot.set_title( f" {n_trees}T Verification Data: MSE = {mse:.2f}")
     subplot.plot(range(y_test.shape[0]), y_test, "b-", label="y_test")
@@ -756,5 +793,3 @@ def main():
 ##        main()
 
 
-if __name__ == '__main__':
-    main()
