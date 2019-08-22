@@ -10,7 +10,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 modelType = "svr"
-validation_fraction = 0.2
+nFolds = 5
+validFold = 0
+invert_data = True
 
 if __name__ == '__main__':
     print("Reading Data")
@@ -18,8 +20,8 @@ if __name__ == '__main__':
     input_y_train: np.ndarray = read_csv_data( "temp_Y_train_inter.csv" )
     input_x_test: np.ndarray = read_csv_data( "temp_X_test_inter.csv", nBands )
     input_y_test: np.ndarray = read_csv_data( "temp_Y_test_inter.csv" )
-    x_data, y_data = getTrainingData( input_x_train, input_y_train, input_x_test, input_y_test )
-    x_data_norm = preprocessing.scale( x_data )
+    x_data_raw, y_data = getTrainingData( input_x_train, input_y_train, input_x_test, input_y_test )
+    x_data_norm = preprocessing.scale( x_data_raw )
 
     estimator: EstimatorBase = EstimatorBase.new( modelType )
     print( f"Executing {modelType} estimator, parameterList: {estimator.parameterList}" )
@@ -31,8 +33,8 @@ if __name__ == '__main__':
         nnr = [dict(n_neighbors=[100,150,200], weights=['uniform','distance'])]
     )
 
-    best_params = estimator.gridSearch( x_data_norm, y_data, param_grids[modelType] )
-    x_train, x_test, y_train, y_test = estimator.fit( x_data_norm, y_data, validation_fraction )
+    best_params = estimator.gridSearch( x_data_norm, y_data, param_grids[modelType], nFolds )
+    x_train, x_test, y_train, y_test = estimator.fit( x_data_norm, y_data, nFolds, validFold )
 
     test_prediction = estimator.predict(x_test)
     fig = plt.figure()
