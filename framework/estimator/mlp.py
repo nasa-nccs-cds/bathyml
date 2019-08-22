@@ -1,6 +1,8 @@
 from framework.estimator.base import EstimatorBase
 from typing import List, Optional, Tuple, Dict, Any, Type
+import numpy as np
 from sklearn.base import BaseEstimator
+from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor
 
 class Estimator(EstimatorBase):
@@ -37,3 +39,9 @@ class Estimator(EstimatorBase):
     @property
     def _constructor(self) -> Type[BaseEstimator]:
         return MLPRegressor
+
+    def fit( self, xdata: np.ndarray, ydata: np.ndarray, validation_fraction: float, *args, **kwargs ):
+        self.update_parameters( validation_fraction=validation_fraction )
+        self.instance.fit( xdata, ydata, *args, **kwargs )
+        x_train, x_test, y_train, y_test = train_test_split(xdata, ydata, test_size=validation_fraction, shuffle=False)
+        return x_train, x_test, y_train, y_test

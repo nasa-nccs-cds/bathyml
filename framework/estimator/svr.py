@@ -13,7 +13,7 @@ class Estimator(EstimatorBase):
     def default_parameters(self) -> Dict:
         return dict(
             C=5.0,
-            cache_size=500,
+            cache_size=1000,
             coef0=0.0,
             degree=3,
             epsilon=0.1,
