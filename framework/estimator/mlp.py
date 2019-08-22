@@ -45,3 +45,11 @@ class Estimator(EstimatorBase):
         self.instance.fit( xdata, ydata, *args, **kwargs )
         x_train, x_test, y_train, y_test = train_test_split(xdata, ydata, test_size=validation_fraction, shuffle=False)
         return x_train, x_test, y_train, y_test
+
+    def fit( self, xdata: np.ndarray, ydata: np.ndarray, nFolds: int, validFold: int,  **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+        self.update_parameters(validation_fraction=1.0/nFolds)
+        x_train, x_test, y_train, y_test = self.getSplit( xdata, ydata, nFolds, validFold,  **kwargs )
+        x_data, y_data = np.concatenate( (x_train, x_test) ), np.concatenate( (y_train, y_test) )
+        print( f" vstack shapes: {x_data.shape} {y_data.shape}")
+        self.instance.fit( x_data, y_data, **kwargs )
+        return x_train, x_test, y_train, y_test

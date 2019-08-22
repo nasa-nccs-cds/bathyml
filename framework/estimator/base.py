@@ -45,14 +45,15 @@ class EstimatorBase:
         my_class = getattr( estimator_module, "Estimator" )
         return my_class(**parms)
 
-    def fit( self, xdata: np.ndarray, ydata: np.ndarray, nFolds: int, validFold: int, *args, **kwargs ):
+    def getSplit(self, xdata: np.ndarray, ydata: np.ndarray, nFolds: int, validFold: int, **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
         splitter = KFold( n_splits=nFolds, shuffle=kwargs.get("shuffle", False) )
         folds = list( splitter.split( xdata ) )
         train_indices, test_indices = folds[validFold]
-        x_train, x_test = xdata[train_indices], xdata[test_indices]
-        y_train, y_test = ydata[train_indices], ydata[test_indices]
-#        x_train, x_test, y_train, y_test = train_test_split( xdata, ydata, test_size=0.2, shuffle=False )
-        self.instance.fit( x_train, y_train, *args, **kwargs )
+        return xdata[train_indices], xdata[test_indices], ydata[train_indices], ydata[test_indices]
+
+    def fit( self, xdata: np.ndarray, ydata: np.ndarray, nFolds: int, validFold: int,  **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+        x_train, x_test, y_train, y_test = self.getSplit( xdata, ydata, nFolds, validFold,  **kwargs )
+        self.instance.fit( x_train, y_train, **kwargs )
         return x_train, x_test, y_train, y_test
 
     def predict( self, xdata: np.ndarray, *args, **kwargs ) -> np.ndarray:

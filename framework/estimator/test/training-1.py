@@ -9,9 +9,9 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
-modelType = "svr"
+modelType = "mlp"
 nFolds = 5
-validFold = 0
+validFold = 3
 invert_data = True
 
 if __name__ == '__main__':
@@ -28,9 +28,9 @@ if __name__ == '__main__':
 
     param_grids = dict(
         mlp = [ dict( learning_rate_init = [ 0.005, 0.01, 0.02 ], alpha = [ 5e-07, 1e-06, 5e-06 ] ) ],
-        rf = [ dict( n_estimators=[20,30,40,50],  max_depth=[5,10,15,20]  ) ],
-        svr=[ dict(  C = [5.0], gamma=[0.3,0.4,0.5] ) ],
-        nnr = [dict(n_neighbors=[100,150,200], weights=['uniform','distance'])]
+        rf = [ dict( n_estimators=[30,50],  max_depth=[10,20]  ) ],
+        svr=[ dict(  C = [5.0], gamma=[0.02,0.05,0.1] ) ],
+        nnr = [dict(n_neighbors=[100,200], weights=['uniform','distance'])]
     )
 
     best_params = estimator.gridSearch( x_data_norm, y_data, param_grids[modelType], nFolds )
