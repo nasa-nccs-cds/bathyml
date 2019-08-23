@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple, Dict, Any
 import os, copy, sys, numpy as np, pickle, math
+from sklearn.model_selection import KFold
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join( os.path.dirname( os.path.dirname(HERE) ), "data" )
@@ -72,3 +73,9 @@ def getTrainingData( x_train, y_train, x_valid, y_valid ) -> Tuple[np.ndarray,np
     x_train_valid = interleave(x_train,x_valid)
     y_train_valid = interleave(y_train,y_valid)
     return x_train_valid, y_train_valid
+
+def getKFoldSplit( xdata: np.ndarray, ydata: np.ndarray, nFolds: int, validFold: int, **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+    splitter = KFold( n_splits=nFolds, shuffle=kwargs.get("shuffle", False) )
+    folds = list( splitter.split( xdata ) )
+    train_indices, test_indices = folds[validFold]
+    return xdata[train_indices], xdata[test_indices], ydata[train_indices], ydata[test_indices]

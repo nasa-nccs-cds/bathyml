@@ -11,8 +11,7 @@ from sklearn.metrics import mean_squared_error
 
 modelType = "mlp"
 nFolds = 5
-validFold = 3
-invert_data = True
+validFold = nFolds-1
 
 if __name__ == '__main__':
     print("Reading Data")
@@ -27,18 +26,19 @@ if __name__ == '__main__':
     print( f"Executing {modelType} estimator, parameterList: {estimator.parameterList}" )
 
     param_grids = dict(
-        mlp = [ dict( learning_rate_init = [ 0.005, 0.01, 0.02 ], alpha = [ 5e-07, 1e-06, 5e-06 ] ) ],
-        rf = [ dict( n_estimators=[30,50],  max_depth=[10,20]  ) ],
-        svr=[ dict(  C = [5.0], gamma=[0.02,0.05,0.1] ) ],
-        nnr = [dict(n_neighbors=[100,200], weights=['uniform','distance'])]
+        mlp = [ dict( max_iter=[80, 100, 120, 140, 160], learning_rate=["invscaling","constant"] ) ],
+        rf = [ dict( n_estimators=[30],  max_depth=[10]  ) ],
+        svr=[ dict(  C = [5.0], gamma=[0.05] ) ],
+        nnr = [dict(n_neighbors=[200], weights=['uniform','distance'])]
     )
 
-    best_params = estimator.gridSearch( x_data_norm, y_data, param_grids[modelType], nFolds )
-    x_train, x_test, y_train, y_test = estimator.fit( x_data_norm, y_data, nFolds, validFold )
+    best_params = estimator.gridSearch( x_data_norm, y_data, param_grids[modelType] )
+    x_train, x_test, y_train, y_test = getKFoldSplit( x_data_norm, y_data, nFolds,  validFold )
+    estimator.fit( x_train, y_train )
+#    estimator.fit( x_data_norm, y_data )
 
     test_prediction = estimator.predict(x_test)
     fig = plt.figure()
-    # fig.suptitle( "Performance Plots: Target (blue) vs Prediction (red)", fontsize=12 )
 
     mse =  math.sqrt( mean_squared_error( y_test, test_prediction ) )
     ax0 = plt.subplot()
