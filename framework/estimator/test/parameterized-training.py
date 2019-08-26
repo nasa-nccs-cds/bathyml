@@ -12,6 +12,7 @@ from sklearn.metrics import mean_squared_error
 modelType = "mlp"
 nFolds = 5
 validFold = nFolds-1
+trainWithFullDataset = True
 
 if __name__ == '__main__':
     print("Reading Data")
@@ -26,7 +27,7 @@ if __name__ == '__main__':
     print( f"Executing {modelType} estimator, parameterList: {estimator.parameterList}" )
 
     parameters = dict(
-        mlp = dict( max_iter=200, learning_rate="constant", early_stopping=False ) ,
+        mlp = dict( max_iter=200, learning_rate="constant", early_stopping=True, solver="lbfgs", validation_fraction=1.0/nFolds ),
         rf =  dict( n_estimators=30,  max_depth=10  ) ,
         svr=  dict( C =5.0, gamma=0.05 ) ,
         nnr = dict( n_neighbors=200, weights='distance' )
@@ -34,7 +35,8 @@ if __name__ == '__main__':
 
     x_train, x_test, y_train, y_test = getKFoldSplit( x_data_norm, y_data, nFolds, validFold )
     estimator.update_parameters( **parameters[modelType] )
-    estimator.fit( x_train, y_train )
+    if trainWithFullDataset:    estimator.fit( x_data_norm, y_data  )
+    else:                       estimator.fit( x_train,     y_train )
 
     test_prediction = estimator.predict(x_test)
     fig = plt.figure()

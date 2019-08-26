@@ -161,18 +161,58 @@ def stack_to_obj(VHRstack):
     return (img, imgProperties)
 
 
-def GetBandValsAsArray(shp, fields, ndval):
+def GetBandValsAsArray(shp, fields, ndval, typeLabel):
+    import osgeo
     print('\n\n --------- creating band value array ------- \n\n')
     print(type(ndval))
     b = len(bands)
 
     driver = ogr.GetDriverByName("ESRI Shapefile")
     dataSource = driver.Open(shp, 0)
-    lyr = dataSource.GetLayer()
+    lyr: osgeo.ogr.Layer = dataSource.GetLayer()
     dt = type(lyr[0].GetField('b2_0760NA'))  # 'b'+str(1)+'_'+rasID+refl))
     print('data type of b2_0760NA:', dt)
+    gCol = lyr.GetGeometryColumn()
+    mdata = lyr.GetMetadata_List()
+#    mdatad = lyr.GetMetadata_Dict()
+    doms = lyr.GetMetadataDomainList()
+    print( f"mdata: {mdata}")
+    print(f"doms: {doms}")
+    print(f"gCol: {gCol}")
 
-    # outar = np.zeros((len(lyr), b+1)).astype(type(dt))
+    layerDefinition = lyr.GetLayerDefn()
+    for i in range(layerDefinition.GetFieldCount()):
+        fieldName = layerDefinition.GetFieldDefn(i).GetName()
+        fieldTypeCode = layerDefinition.GetFieldDefn(i).GetType()
+        fieldType = layerDefinition.GetFieldDefn(i).GetFieldTypeName(fieldTypeCode)
+        fieldWidth = layerDefinition.GetFieldDefn(i).GetWidth()
+        GetPrecision = layerDefinition.GetFieldDefn(i).GetPrecision()
+        print( "**" + fieldName + " - " + fieldType + " " + str(fieldWidth) + " " + str(GetPrecision) )
+
+    print( "\nGEOMETRY\n" ) # Latitude Longitude LakeID_ccp LakeClassi LakeID_Hum NumCentBas DistFrmOrg GridNum
+
+    fieldNames = ['Latitude', 'Longitude', 'LakeID_ccp', 'LakeClassi', 'LakeID_Hum', 'GridNum' ]
+    elements = []
+    base = None
+    for iF, feature in enumerate(lyr):
+        geom: osgeo.ogr.Geometry = feature.GetGeometryRef()
+#        field_values = { fieldName: feature.GetField( fieldName ) for fieldName in fieldNames }
+        x,y = geom.GetX(), geom.GetY()
+        if base is None: base = [ x, y ]
+        elements.append(geom.GetX() - base[0])
+        elements.append( geom.GetY()-base[1] )
+
+    pointData: np.array = np.array( elements, dtype=np.float ).reshape( lyr.GetFeatureCount(), 2 )
+
+    outfile = os.path.join(ddir, f'PointXYData-{typeLabel}.csv' )
+    np.savetxt(outfile, pointData, delimiter=",")
+
+#        elements.append(relPoint)
+#        if iF % 100 == 0:
+#            print( f"@FEATURE{iF}:  {relPoint[0]}, Y: {relPoint[1]}" )
+#    print( f"Number of features = {lyr.GetFeatureCount()}, number of objects = {len(elements)}")
+
+        # outar = np.zeros((len(lyr), b+1)).astype(type(dt))
     # print outar.shape,'\n shape of zeros array to fill with BVs, and datatype is: ', outar.dtype, '=data type'
     # print type(src_ds)
 
@@ -656,8 +696,8 @@ def read_band_data( validation_fraction ):
     print(test_shp, 'is test shp')
 
     (img, imgProperties) = stack_to_obj(VHRstack)
-    X_train_inter, y_train_inter = GetBandValsAsArray(shp=train_shp, fields=bandExtr_fieldList, ndval=imgProperties[4])
-    X_test_inter, y_test_inter   = GetBandValsAsArray(shp=test_shp, fields=bandExtr_fieldList, ndval=imgProperties[4])
+    X_train_inter, y_train_inter = GetBandValsAsArray(shp=train_shp, fields=bandExtr_fieldList, ndval=imgProperties[4], typeLabel="train")
+    X_test_inter, y_test_inter   = GetBandValsAsArray(shp=test_shp, fields=bandExtr_fieldList, ndval=imgProperties[4], typeLabel="train")
     X_test_inter:  np.ndarray  = X_test_inter[:, :len(bands)]
     X_train_inter: np.ndarray = X_train_inter[:, :len(bands)]
     X_data = interleave( X_test_inter, X_train_inter )
