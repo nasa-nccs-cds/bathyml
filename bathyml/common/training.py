@@ -8,6 +8,7 @@ from time import time
 from datetime import datetime
 from sklearn.neural_network import MLPRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 modelParms = dict(
   nnr=dict(
@@ -19,9 +20,6 @@ modelParms = dict(
     metric='minkowski',
     metric_params=None,
     n_jobs=None,
-    model_handles_validation=False,
-    p0_range=[60],
-    p1_range=[0.5]
 ),
   gpr=dict(
     kernel=None,
@@ -31,9 +29,6 @@ modelParms = dict(
     normalize_y=True,
     copy_X_train=True,
     random_state=None,
-    model_handles_validation=False,
-    p0_range = [ 5.0 ],
-    p1_range = [0.5]
   ),
   svr = dict(
     C=5.0,
@@ -47,9 +42,6 @@ modelParms = dict(
     shrinking=True,
     tol=0.001,
     verbose=False,
-    model_handles_validation = False,
-    p0_range = [ 5.0 ],
-    p1_range = [ 0.5 ]
   ),
   mlp = dict(
     hidden_layer_sizes=(32,),
@@ -74,12 +66,14 @@ modelParms = dict(
     beta_2=0.999,
     epsilon=1e-8,
     n_iter_no_change=10,
-    model_handles_validation = True,
-    p0_range = [ 0.0, 0.0000001, 0.000001, 0.00001 ],
-    p1_range = [ 0.1, 0.2, 0.3, 0.4 ]
   ),
+    rfr = dict(
+        n_estimators=30,
+        max_features= 'sqrt',  # 'log2'  'sqrt',
+        max_depth=10,
+        oob_score=True
+    )
 )
-
 pca_components = 0 # 14
 whiten = False
 modelType = "nnr"
@@ -91,25 +85,39 @@ def get_parm_name( svmArgs: Dict ) -> str:
     else: return "coef0"
 
 def getModel( modelType, p0, p1 ):
-    params = modelParms[modelType]
+    params = {}
     if modelType == "svr":
         params['C'] = p0
         params['gamma'] = p1
-        return svm.SVR(**params)
         print(f"Fitting {modelType} Model, kernel={params['kernel']}, C={p0}, gamma={p1}")
     elif modelType == "mlp":
         params['alpha'] = p0
         params['power_t'] = p1
         print(f"Fitting {modelType} Model, alpha={p0}")
-        return MLPRegressor(**params)
     elif modelType == "gpr":
         params['alpha'] = p0
         print(f"Fitting {modelType} Model, alpha={p0}")
-        return GaussianProcessRegressor(**params)
     elif modelType == "nnr":
         params['n_neighbors'] = p0
         print(f"Fitting {modelType} Model, n_neighbors={p0}")
+    elif modelType == "rfr":
+        print(f"Fitting {modelType} Model")
+    else: raise Exception( f" Unknown Model type: {modelType}")
+    return getParameterizedModel(  modelType, **params )
+
+def getParameterizedModel( modelType, **newParams ):
+    defaultparams = modelParms[modelType]
+    params = { **defaultparams } if not newParams else { **defaultparams, **newParams }
+    if modelType == "svr":
+        return svm.SVR(**params)
+    elif modelType == "mlp":
+        return MLPRegressor(**params)
+    elif modelType == "gpr":
+        return GaussianProcessRegressor(**params)
+    elif modelType == "nnr":
         return neighbors.KNeighborsRegressor (**params)
+    elif modelType == "rfr":
+        return RandomForestRegressor(**params)
     else: raise Exception( f" Unknown Model type: {modelType}")
 
 if __name__ == '__main__':

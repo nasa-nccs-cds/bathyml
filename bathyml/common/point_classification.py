@@ -23,8 +23,6 @@ def cluster_data( clusters: np.ndarray, data: np.ndarray ) -> np.ndarray:
         centroids.append( cmean )
     return np.stack( centroids, axis=0 )
 
-
-
 thisDir = os.path.dirname(os.path.abspath(__file__))
 ddir = os.path.join(os.path.dirname(os.path.dirname(thisDir)), "data")
 nBands = 21
@@ -32,7 +30,6 @@ pca_components = 3
 whiten = False
 showSpaceClusters = True
 showPCAClusters = True
-
 
 typeLabel = "train"
 outfile = os.path.join(ddir, f'PointXYData-{typeLabel}.csv' )
@@ -59,19 +56,33 @@ if showSpaceClusters:
 
 if showPCAClusters:
     x_train: np.ndarray = read_csv_data("temp_X_train_inter.csv", nBands)
+    print( x_train.shape )
+    print(x_train[0])
+    print(x_train[-1])
+
+    pca = PCA(n_components=pca_components, whiten=whiten)
+    color_point_data_pca = pca.fit(x_train).transform(x_train)
+    print(f'PCA: explained variance ratio ({pca_components} components): {pca.explained_variance_ratio_}')
+
+    x = color_point_data_pca[:, 0]
+    y = color_point_data_pca[:, 1]
+    fig, ax = plt.subplots()
+    ax.set_title("PCA-Reduced Color Points")
+    im = ax.scatter(x, y, s=2)
+    plt.show()
+
     pca = PCA(n_components=pca_components, whiten=whiten)
     centroids = cluster_data(ccolors, x_train)
 
     color_data_pca = pca.fit(centroids).transform(centroids)
     print(f'PCA: explained variance ratio ({pca_components} components): {pca.explained_variance_ratio_}')
 
-
     x = color_data_pca[:, 0]
     y = color_data_pca[:, 1]
 
     if pca_components == 2:
         fig, ax = plt.subplots()
-        ax.set_title("PCA-Reduced Color Points")
+        ax.set_title("PCA-Reduced Color Centroid Points")
         im = ax.scatter( x, y, s=2  )
     else:
         z = color_data_pca[:, 2]

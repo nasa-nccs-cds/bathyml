@@ -166,9 +166,6 @@ def GetBandValsAsArray(shp, fields, ndval, typeLabel):
     mdata = lyr.GetMetadata_List()
 #    mdatad = lyr.GetMetadata_Dict()
     doms = lyr.GetMetadataDomainList()
-    print( f"mdata: {mdata}")
-    print(f"doms: {doms}")
-    print(f"gCol: {gCol}")
 
     layerDefinition = lyr.GetLayerDefn()
     for i in range(layerDefinition.GetFieldCount()):
@@ -192,7 +189,7 @@ def GetBandValsAsArray(shp, fields, ndval, typeLabel):
         elements.append(geom.GetX() - base[0])
         elements.append( geom.GetY()-base[1] )
 
-    pointData: np.array = np.array( elements, dtype=np.float ).reshape( lyr.GetFeatureCount(), 2 )
+    pointData: np.ndarray = np.array( elements, dtype=np.float ).reshape( lyr.GetFeatureCount(), 2 )
 
     outfile = os.path.join(ddir, f'PointXYData-{typeLabel}.csv' )
     np.savetxt(outfile, pointData, delimiter=",")
@@ -220,7 +217,8 @@ def GetBandValsAsArray(shp, fields, ndval, typeLabel):
     # print "Ex get field as array", GetFieldAsArr(shp, 'myFID').ravel()
     # outar[:,b] = GetFieldAsArr(shp, 'myFID').ravel() #fid_list #last column in out array is FID vals
 
-    depth = GetFieldAsArr(shp, 'FiltAvgDep').ravel()  # !!! ENSURE THIS FIELD IS CORRECT
+    depth = GetFieldAsArr(shp, 'FiltAvgDep').ravel()
+    depth = np.concatenate( [pointData, depth.reshape( [depth.shape[0], 1] ) ], axis=1 )
 
     # print 'current dtype of outar', outar.dtype
     # fl_outar=outar.astype(np.float32)
@@ -232,7 +230,7 @@ def GetBandValsAsArray(shp, fields, ndval, typeLabel):
     print(xar.dtype, 'is dtype of xarray train and tests')
     print(yar.dtype, "=data type of y array of y train and tests", 'prev dtype of yar was', depth.dtype)
     del dataSource
-    return xar, yar
+    return  np.concatenate( [yar, xar], axis=1 )
 
 
 def GetFieldAsArr(shp, fieldname):
@@ -585,7 +583,7 @@ def get_test_training_sets(inputText):  # CS doesnt use this function
     # where X_train is an array of all the features (qualities, e.g. RGB values etc.) of the input pixels,
     # y_train is a list of all the depths of the input pixels
     # X_test is an array of all the features of the validation pixels (e.g. RGB vals)
-    # and y_test is a list of all the depths of all the validation pixels... 
+    # and y_test is a list of all the depths of all the validation pixels...
 
     return (X_train, X_test, y_train, y_test)
 
@@ -699,7 +697,7 @@ def convert_img_to_Xy_data(VHRstack, sampleTif):
 def main():
     print("starting main...")
     start = timer()
-    # Set up directories: NEED TO CHANGE VHS and train DIRS (script makes down model, class and log dirs)*********** 
+    # Set up directories: NEED TO CHANGE VHS and train DIRS (script makes down model, class and log dirs)***********
     # /RandomForestsTest' #'/att/gpfsfs/briskfs01/ppl/mwooten3/Myanmar/RandomForests/'
     # ********* CHANGE THIS^: my folder path
     ######*************************************
@@ -717,7 +715,7 @@ def main():
     print("Field List:", bandExtr_fieldList)
     print(len(bandExtr_fieldList), 'is length of band extract field list')
 
-    # ? will these be created in loop below? 
+    # ? will these be created in loop below?
     modelDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output,
                             'Models')  # , '{}_{}'.format(extentName, modelName)) #C #Model output location
     classDir = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'Classified')  # , extentName) #C #Location for output classification
@@ -733,7 +731,7 @@ def main():
     print("done log processing")
 
     # os.path.join(VHRdir, im_name)#'DataStack__{}.tif'.format(extentName))
-    # ^ Stack of VHR data (Multispec and Pan) //only covers [all North Slope, not just lakes w/ in situ data] lakes! 
+    # ^ Stack of VHR data (Multispec and Pan) //only covers [all North Slope, not just lakes w/ in situ data] lakes!
     # & make other pixels have no data valu
 
     # take in shapefile and extract raster values at those points, export band vals to csv to use to train model as inputX
@@ -749,64 +747,15 @@ def main():
 
     (img, imgProperties) = stack_to_obj(VHRstack)
 
-    X_train, y_train = GetBandValsAsArray(shp=train_shp, fields=bandExtr_fieldList, ndval=imgProperties[4], typeLabel="train" )
-    print("in main, type of X_train is:", X_train.dtype, y_train.dtype, 'is type of ytrain')
+    X_train = GetBandValsAsArray(shp=train_shp, fields=bandExtr_fieldList, ndval=imgProperties[4], typeLabel="train" )
+    print("in main, type of X_train is:", X_train.dtype )
 
-    X_test, y_test = GetBandValsAsArray(shp=test_shp, fields=bandExtr_fieldList, ndval=imgProperties[4], typeLabel="test" )
+    X_test = GetBandValsAsArray(shp=test_shp, fields=bandExtr_fieldList, ndval=imgProperties[4], typeLabel="test" )
 
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_X_train.csv')
+    outfile = os.path.join(ddir, 'csv', 'lake_data_train.csv')
     np.savetxt(outfile, X_train, delimiter=",")
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_Y_test.csv')
-    np.savetxt(outfile, y_test, delimiter=",")
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_Y_train.csv')
-    np.savetxt(outfile, y_train, delimiter=",")
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'temp_X_test.csv')
+    outfile = os.path.join(ddir,'csv', 'lake_data_test.csv')
     np.savetxt(outfile, X_test, delimiter=",")
-    # 1st step: get_test_training_sets
-    # IF input is csv file, use this method
-    """Before calling the model train or apply, read and configure the inputs into test and train """
-    # inputText = '/att/gpfsfs/briskfs01/ppl/mwooten3/Myanmar/RandomForests/TrainingData/Myanmar_5class_training.csv'
-
-    ##    # if input is an image stack and training tif, use this: 
-    fid_test = X_test[:, len(bands)].astype(int)  # all rows and the last column (8th col, but index pos is 7)
-    X_test = X_test[:, :len(bands)]
-    X_train = X_train[:, :len(bands)]
-
-    print('shape of X_train:', X_train.shape)
-    print( 'N bands:', bands )
-
-    # Train and apply models:
-    print("Building model with n_trees={} and max_feat={}...".format(n_trees, max_feat))
-    rf, model_save = train_model(X_train, y_train, modelDir, n_trees, max_feat)
-
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'test_prediction.csv')
-    prediction =  rf.predict(X_test)
-    np.savetxt(outfile, prediction, delimiter=",")
-
-    outfile = os.path.join(ddir, 'RandomForestTests', 'RFA_Outputs', folder_output, 'training_prediction.csv')
-    prediction =  rf.predict(X_train)
-    np.savetxt(outfile, prediction, delimiter=",")
-
-    # # 3rd step: apply model
-    print("\nApplying model to rest of imagery")
-    print("model save:", model_save)
-    apply_model(img, imgProperties, classDir, model_save)
-
-    # # 4th step: run diagnostics
-    # run_diagnostics(model_save, X_test, y_test, fid_test)
-    #
-    # elapsed = round(find_elapsed_time(start, timer()), 3)
-    #
-    # print("\n\nElapsed time = {}".format(elapsed), "mins")
-
-
-### FOR PROJECT: Run the model with different parameters:
-##trees = [30, 200]
-##feats = ['sqrt', 'log2']
-##for n_trees in trees:
-##    for max_feat in feats:
-##        modelName = '{}_{}'.format(n_trees, max_feat)# 'try3' # to distinguish between parameters of each model
-##        main()
 
 
 if __name__ == '__main__':
