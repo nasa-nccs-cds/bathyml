@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN, KMeans
 from typing import List, Optional, Tuple, Dict, Any
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import normalize
 from sklearn import preprocessing
 from bathyml.common.training import getParameterizedModel
 from mpl_toolkits.mplot3d import Axes3D
@@ -72,8 +73,10 @@ ddir = os.path.join(os.path.dirname(os.path.dirname(thisDir)), "data", "csv")
 nBands = 21
 whiten = False
 typeLabel = "train"
-modelType = "rfr"
-target_cluster_index = 5
+modelType = "mlp"
+validation_fraction = 0.0
+target_cluster_index = -1
+n_training_clusters = 5
 show_cluster_locs = False
 model_label = "-".join( [modelType, str(target_cluster_index)] )
 
@@ -102,12 +105,14 @@ color_clusters: List[Cluster] = compute_clusters( cluster_indices, dataArray )
 
 targetCluster = color_clusters[target_cluster_index]
 
-sorted_clusters = get_training_clusters( color_clusters, targetCluster.centroid, 10 )
+sorted_clusters = get_training_clusters( color_clusters, targetCluster.centroid, n_training_clusters )
 
-x_train, y_train = get_training_set( sorted_clusters )
-x_test, y_test   = get_training_set( [targetCluster] )
+x_train_raw, y_train = get_training_set( sorted_clusters )
+x_test_raw, y_test   = get_training_set( [targetCluster] )
+x_train = normalize( x_train_raw )
+x_test = normalize( x_test_raw )
 
-model = getParameterizedModel( modelType )
+model = getParameterizedModel( modelType, validation_fraction=validation_fraction )
 model.fit( x_train, y_train.ravel() )
 prediction_training = model.predict(x_train)
 prediction_validation = model.predict(x_test)

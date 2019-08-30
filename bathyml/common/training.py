@@ -106,11 +106,14 @@ def getModel( modelType, p0, p1 ):
     return getParameterizedModel(  modelType, **params )
 
 def getParameterizedModel( modelType, **newParams ):
-    defaultparams = modelParms[modelType]
-    params = { **defaultparams } if not newParams else { **defaultparams, **newParams }
+    params = { **modelParms[modelType] }
+    if newParams is None: newParams = {}
+    for key, value in newParams.items():
+        if key in params: params[key] = value
     if modelType == "svr":
         return svm.SVR(**params)
     elif modelType == "mlp":
+        if params.get('validation_fraction',0.2) == 0.0: del params['validation_fraction']
         return MLPRegressor(**params)
     elif modelType == "gpr":
         return GaussianProcessRegressor(**params)
