@@ -1,4 +1,4 @@
-import os, math, numpy as np
+import os, random, math, numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN, KMeans
 from typing import List, Optional, Tuple, Dict, Any
@@ -67,6 +67,14 @@ def get_training_set( clusters: List[Cluster] ) -> Tuple[np.ndarray,np.ndarray]:
         ydata.append( cluster.height_data )
     return np.concatenate(xdata, axis=0), np.concatenate(ydata, axis=0)
 
+def get_locations( clusters: List[Cluster] ) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
+    xdata, ydata, cdata = [], [], []
+    cfactor = 255.0/len(clusters)
+    for iC, cluster in enumerate(clusters):
+        xdata.append( cluster.loc_data[:,0])
+        ydata.append( cluster.loc_data[:,1] )
+        cdata.append(np.full( [ cluster.loc_data.shape[0] ], fill_value=cfactor * iC ) )
+    return np.concatenate(xdata, axis=0), np.concatenate(ydata, axis=0), np.concatenate(cdata, axis=0)
 
 thisDir = os.path.dirname(os.path.abspath(__file__))
 ddir = os.path.join(os.path.dirname(os.path.dirname(thisDir)), "data", "csv")
@@ -75,10 +83,7 @@ whiten = False
 typeLabel = "train"
 modelType = "mlp"
 validation_fraction = 0.0
-target_cluster_index = -1
-n_training_clusters = 5
 show_cluster_locs = False
-model_label = "-".join( [modelType, str(target_cluster_index)] )
 
 datafile = os.path.join(ddir, f'lake_data_{typeLabel}.csv' )
 dataArray: np.ndarray = np.loadtxt( datafile, delimiter=",")
@@ -93,53 +98,67 @@ loc0: np.ndarray = dataArray[:,0]
 loc1: np.ndarray = dataArray[:,1]
 zd: np.ndarray = dataArray[:,2]
 
-if show_cluster_locs:
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    im = ax.scatter(loc0, loc1, c=ccolors, cmap="jet", s=3 )
-    plt.show()
-
 colorData = dataArray[:,3:nBands+3]
 cnorm =  preprocessing.scale( colorData )
 color_clusters: List[Cluster] = compute_clusters( cluster_indices, dataArray )
 
-targetCluster = color_clusters[target_cluster_index]
+ax0 = plt.subplot()
+for target_cluster_index in range(0, len(color_clusters)):
+    xr = []
+    yr = []
+    for n_training_clusters in range( 5, 25, 5 ):
+        targetCluster = color_clusters[target_cluster_index]
+        sorted_clusters = get_training_clusters( color_clusters, targetCluster.centroid, n_training_clusters )
 
-sorted_clusters = get_training_clusters( color_clusters, targetCluster.centroid, n_training_clusters )
+        if show_cluster_locs:
+            loc0, loc1, cloc = get_locations( sorted_clusters )
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            im = ax.scatter(loc0, loc1, c=cloc, cmap="jet", s=3)
+            plt.show()
 
-x_train_raw, y_train = get_training_set( sorted_clusters )
-x_test_raw, y_test   = get_training_set( [targetCluster] )
-x_train = normalize( x_train_raw )
-x_test = normalize( x_test_raw )
+        x_train_raw, y_train = get_training_set( sorted_clusters )
+        x_test_raw, y_test   = get_training_set( [targetCluster] )
+        x_train = normalize( x_train_raw )
+        x_test = normalize( x_test_raw )
 
-model = getParameterizedModel( modelType, validation_fraction=validation_fraction )
-model.fit( x_train, y_train.ravel() )
-prediction_training = model.predict(x_train)
-prediction_validation = model.predict(x_test)
+        model = getParameterizedModel( modelType, validation_fraction=validation_fraction )
+        model.fit( x_train, y_train.ravel() )
+        prediction_validation = model.predict(x_test)
+        diff = y_test - prediction_validation
+        mse = math.sqrt((diff * diff).mean())
+        xr.append( n_training_clusters )
+        yr.append( mse )
 
-diff = y_train - prediction_training
-mse = math.sqrt((diff * diff).mean())
-ax0 = plt.subplot("211")
-ax0.set_title(f"{model_label} Training Data MSE = {mse:.2f} ")
-xaxis = range(prediction_training.shape[0])
-ax0.plot(xaxis, y_train, "b--", label="validation data")
-ax0.plot(xaxis, prediction_training, "r--", label="prediction")
+    ax0.plot( xr, yr, "b--" )
+
 ax0.legend()
 plt.show()
 
-diff = y_test - prediction_validation
-ref_mse = math.sqrt((y_test * y_test).mean())
-mse = math.sqrt((diff * diff).mean())
-print(f" REF MSE = {ref_mse} ")
-ax1 = plt.subplot("212")
-ax1.set_title(f"{model_label} Validation Data MSE = {mse:.2f} ")
-xaxis = range(prediction_validation.shape[0])
-ax1.plot(xaxis, y_test, "b--", label="training data")
-ax1.plot(xaxis,prediction_validation, "r--", label="prediction")
-ax1.legend()
-plt.show()
 
-
+# diff = y_train - prediction_training
+# mse = math.sqrt((diff * diff).mean())
+# ax0 = plt.subplot("211")
+# ax0.set_title(f"{model_label} Training Data MSE = {mse:.2f} ")
+# xaxis = range(prediction_training.shape[0])
+# ax0.plot(xaxis, y_train, "b--", label="validation data")
+# ax0.plot(xaxis, prediction_training, "r--", label="prediction")
+# ax0.legend()
+# plt.show()
+#
+# diff = y_test - prediction_validation
+# ref_mse = math.sqrt((y_test * y_test).mean())
+# mse = math.sqrt((diff * diff).mean())
+# print(f" REF MSE = {ref_mse} ")
+# ax1 = plt.subplot("212")
+# ax1.set_title(f"{model_label} Validation Data MSE = {mse:.2f} ")
+# xaxis = range(prediction_validation.shape[0])
+# ax1.plot(xaxis, y_test, "b--", label="training data")
+# ax1.plot(xaxis,prediction_validation, "r--", label="prediction")
+# ax1.legend()
+# plt.show()
+#
+#
 
 
 
