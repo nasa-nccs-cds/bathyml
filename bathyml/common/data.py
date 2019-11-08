@@ -32,11 +32,22 @@ class NormalizedArray:
     def rescale(self, array: np.ndarray ) -> np.ndarray:
         return array*self._std + self._ave
 
-def read_csv_data( fileName: str, nBands: int = 0 ) -> np.ndarray:
+def read_csv_data( fileName: str ) -> Tuple[np.ndarray,np.ndarray]:
+    import csv
     file_path: str = os.path.join( ddir, fileName )
-    raw_data_array: np.ndarray = np.loadtxt( file_path, delimiter=',')
-    if (nBands > 0): raw_data_array = raw_data_array[:,:nBands]
-    return raw_data_array
+    with open(file_path) as csvfile:
+        csvData = csv.reader( csvfile, delimiter=',' )
+        headers = None
+        ydata = []
+        xdata = []
+        for index,row in enumerate(csvData):
+            if index == 0: headers = row
+            else:
+                ydata.append( float(row[1]) )
+                xdata.append( [ float(r) for r in row[3:]] )
+        np_xdata = np.array( xdata )
+        np_ydata = np.array( ydata )
+        return np_xdata, np_ydata
 
 def normalize( array: np.ndarray ):
     ave = array.mean( axis=0 )
@@ -79,3 +90,12 @@ def getKFoldSplit( xdata: np.ndarray, ydata: np.ndarray, nFolds: int, validFold:
     folds = list( splitter.split( xdata ) )
     train_indices, test_indices = folds[validFold]
     return xdata[train_indices], xdata[test_indices], ydata[train_indices], ydata[test_indices]
+
+def getSplit( x_data: np.ndarray, y_data: np.ndarray, validation_fraction: float ) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+    NValidationElems = int( round( x_data.shape[0] * validation_fraction ) )
+    NTrainingElems = x_data.shape[0] - NValidationElems
+    x_train = x_data[:NTrainingElems]
+    x_test =  x_data[NTrainingElems:]
+    y_train = y_data[:NTrainingElems]
+    y_test =  y_data[NTrainingElems:]
+    return x_train, x_test, y_train, y_test

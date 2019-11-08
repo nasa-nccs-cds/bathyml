@@ -1,6 +1,7 @@
 from geoproc.data.shapefiles import ShapefileManager
 import os
 import geopandas as gpd
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join( os.path.dirname( os.path.dirname(HERE) ), "data" )
 outDir = os.path.join(DATA, "results")

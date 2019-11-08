@@ -9,18 +9,14 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
-modelType = "mlp"
+modelType = "rf"
 nFolds = 5
-validFold = nFolds-1
-trainWithFullDataset = True
+validFold = 1 # nFolds-1
+trainWithFullDataset = False
 
 if __name__ == '__main__':
     print("Reading Data")
-    input_x_train: np.ndarray = read_csv_data( "temp_X_train_inter.csv", nBands )
-    input_y_train: np.ndarray = read_csv_data( "temp_Y_train_inter.csv" )
-    input_x_test: np.ndarray = read_csv_data( "temp_X_test_inter.csv", nBands )
-    input_y_test: np.ndarray = read_csv_data( "temp_Y_test_inter.csv" )
-    x_data_raw, y_data = getTrainingData( input_x_train, input_y_train, input_x_test, input_y_test )
+    x_data_raw, y_data = read_csv_data( "pts_merged_final.csv"  )
     x_data_norm = preprocessing.scale( x_data_raw )
 
     estimator: EstimatorBase = EstimatorBase.new( modelType )
@@ -39,15 +35,24 @@ if __name__ == '__main__':
     else:                       estimator.fit( x_train,     y_train )
 
     test_prediction = estimator.predict(x_test)
+    train_prediction = estimator.predict(x_train)
     fig = plt.figure()
 
-    mse =  math.sqrt( mean_squared_error( y_test, test_prediction ) )
-    ax0 = plt.subplot()
-    ax0.set_title( f"{modelType} Test Data MSE = {mse:.2f} ")
-    xaxis = range(test_prediction.shape[0])
-    ax0.plot(xaxis, y_test, "b--", label="test data")
-    ax0.plot(xaxis, test_prediction, "r--", label="prediction")
+    ax0 = plt.subplot("211")
+    mse =  math.sqrt( mean_squared_error( y_train, train_prediction ) )
+    ax0.set_title( f"{modelType} Train Data MSE = {mse:.2f} ")
+    xaxis = range(train_prediction.shape[0])
+    ax0.plot(xaxis, y_train, "b--", label="train data")
+    ax0.plot(xaxis, train_prediction, "r--", label="prediction")
     ax0.legend()
+
+    ax1 = plt.subplot("212")
+    mse =  math.sqrt( mean_squared_error( y_test, test_prediction ) )
+    ax1.set_title( f"{modelType} Test Data MSE = {mse:.2f} ")
+    xaxis = range(test_prediction.shape[0])
+    ax1.plot(xaxis, y_test, "b--", label="test data")
+    ax1.plot(xaxis, test_prediction, "r--", label="prediction")
+    ax1.legend()
 
     plt.tight_layout()
     plt.show()

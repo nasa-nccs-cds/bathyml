@@ -125,13 +125,8 @@ def getParameterizedModel( modelType, **newParams ):
 
 if __name__ == '__main__':
     print("Reading Data")
-    x_train: np.ndarray = read_csv_data( "temp_X_train_inter.csv", nBands )
-    y_train: np.ndarray = read_csv_data( "temp_Y_train_inter.csv" )
-    x_valid: np.ndarray = read_csv_data( "temp_X_test_inter.csv", nBands )
-    y_valid: np.ndarray = read_csv_data( "temp_Y_test_inter.csv" )
+    x_data, y_data = read_csv_data( "pts_merged_final.csv"  )
     mParams = modelParms[modelType]
-
-    x_data, y_data = getTrainingData( x_train, y_train, x_valid, y_valid )
 
     if pca_components > 0:
         pca = PCA( n_components = pca_components, whiten=whiten )
@@ -141,7 +136,7 @@ if __name__ == '__main__':
     else:
         x_data_norm = preprocessing.scale( x_data )
 
-    input_dim = x_train.shape[1]
+    input_dim = x_data.shape[1]
     NValidationElems = int( round( x_data.shape[0] * validation_fraction ) )
     NTrainingElems = x_data.shape[0] - NValidationElems
 
@@ -150,7 +145,7 @@ if __name__ == '__main__':
     y_train = y_data[:NTrainingElems]
     y_test =  y_data[NTrainingElems:]
 
-    model_handles_validation =  mParams.pop('model_handles_validation')
+    model_handles_validation =  mParams.pop('model_handles_validation',False)
     if model_handles_validation:
         xfit, yfit = x_data_norm, y_data
     else:
