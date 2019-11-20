@@ -21,6 +21,7 @@ setup(name='bathyml',
       long_description_content_type="text/markdown",
       packages=find_packages(),
       install_requires=list(install_requires),
+      data_files=[ ('data/csv', ['data/csv/pts_merged_final.csv' ]) ],
       classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
