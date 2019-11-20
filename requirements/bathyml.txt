@@ -1,0 +1,10 @@
+xarray
+dask
+matplotlib
+numpy
+wget
+scikit-learn
+gdal
+
+
+
