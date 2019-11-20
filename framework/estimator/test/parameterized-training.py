@@ -6,7 +6,7 @@ import pandas as pd
 
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
 outDir = os.path.join( scratchDir, "results", "WaterMapping" )
-os.makedirs( outDir )
+if not os.path.exists(outDir): os.makedirs( outDir )
 version= 0
 verbose = False
 nFolds= 5
