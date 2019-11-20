@@ -40,8 +40,7 @@ if __name__ == '__main__':
             if make_plots:
                 fig, ax = plt.subplots(2,1)
             estimator: EstimatorBase = EstimatorBase.new( modelType )
-            if validFold ==0 or verbose:
-                print( f"Executing {modelType} estimator, validation_fraction={validation_fraction}, fold = {validFold}, parameterList: {estimator.parameterList}" )
+            print( f"Executing {modelType} estimator, validation_fraction={validation_fraction}, fold = {validFold}, parameterList: {estimator.parameterList}" )
             pts_train, pts_test, x_train, x_test, y_train, y_test = getKFoldSplit(pts_data, x_data_norm, y_data, nFolds, validFold)
             estimator.update_parameters( validFold=validFold, validation_fraction=validation_fraction, **parameters[modelType] )
             x_train_valid, y_train_valid = (np.concatenate( [x_train, x_test] ), np.concatenate( [y_train, y_test] ) ) if modelType == "mlp" else (x_train, y_train)
