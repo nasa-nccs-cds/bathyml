@@ -76,11 +76,6 @@ if __name__ == '__main__':
                 ax[1].plot(xaxis, test_prediction, "r--", label="prediction")
                 ax[1].legend()
 
-            print( f"Performance {modelType}-{validFold}: ")
-            print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ]")
-            print( f" ----> TEST SCORE:  {mse_testC/mse_test:.2f} [ MSE= {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ]")
-            score_table.add_row( validFold, [mse_train, mse_trainC, mse_test, mse_testC] )
-
             for idx in range(pts_train.shape[0]):
                 pts = pts_train[idx]
                 results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "train", f"{y_train[idx]:.3f}", f"{train_prediction[idx]:.3f}" ] )
@@ -96,8 +91,12 @@ if __name__ == '__main__':
                 plt.savefig( outFile )
                 plt.close( fig )
 
+            print( f"Performance {modelType}-{validFold}: ")
+            print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ]")
+            print( f" ----> TEST SCORE:  {mse_testC/mse_test:.2f} [ MSE= {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ]")
+            score_table.add_row( validFold, [mse_train, mse_trainC, mse_test, mse_testC] )
+
         print(f" AVE performance[{modelType}]: {parameters[modelType]} " )
-        print( score_table )
         sums: pd.DataFrame = score_table.get_sums()
         scores = [ min( sums['mse_trainC']/sums['mse_train'], 3.0 ), sums['mse_testC']/sums['mse_test'], 1.0 ]
         print( f" SCORES: train= {scores[0]}, test= {scores[1]} " )
