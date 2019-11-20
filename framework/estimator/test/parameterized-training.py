@@ -14,7 +14,7 @@ nFolds= 5
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
-    mlp=dict( max_iter=250, learning_rate="constant", solver="adam", early_stopping=False ),
+    mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
     rf=dict(n_estimators=70, max_depth=20),
     svr=dict(C=5.0, gamma=0.5),
     nnr=dict( n_neighbors=5, weights='distance' ),
@@ -37,13 +37,14 @@ if __name__ == '__main__':
         score_table = IterativeTable( cols=mseCols )
         for validFold in range( nFolds-1 ):
             validation_fraction = 1.0 / nFolds if nFolds > 1 else None
+            modParms = parameters[modelType]
             if make_plots:
                 fig, ax = plt.subplots(2,1)
             estimator: EstimatorBase = EstimatorBase.new( modelType )
             print( f"Executing {modelType} estimator, validation_fraction={validation_fraction}, fold = {validFold}, parameterList: {estimator.parameterList}" )
             pts_train, pts_test, x_train, x_test, y_train, y_test = getKFoldSplit(pts_data, x_data_norm, y_data, nFolds, validFold)
-            estimator.update_parameters( validFold=validFold, validation_fraction=validation_fraction, **parameters[modelType] )
-            x_train_valid, y_train_valid = (np.concatenate( [x_train, x_test] ), np.concatenate( [y_train, y_test] ) ) if ( modelType == "mlp" and parameters['early_stopping'] )  else (x_train, y_train)
+            estimator.update_parameters( validFold=validFold, validation_fraction=validation_fraction, **modParms )
+            x_train_valid, y_train_valid = (np.concatenate( [x_train, x_test] ), np.concatenate( [y_train, y_test] ) ) if ( modelType == "mlp" and modParms['early_stopping'] )  else (x_train, y_train)
             estimator.fit( x_train_valid, y_train_valid )
             model_mean, model_std  =  y_train.mean(), y_train.std()
             const_model_train = np.full( y_train.shape, model_mean )
@@ -68,6 +69,7 @@ if __name__ == '__main__':
             mse_test =  mean_abs_error( y_test, test_prediction )
             mse_testC = mean_abs_error( y_test, const_model_test )
             mse_testR = mean_abs_error( y_test, random_model_test )
+            print( f"MAE: {mse_test} {mse_testC} {mse_testR} " )
 
             if make_plots:
                 ax[1].set_title( f"{modelType} Test Data MSE = {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ")
@@ -96,7 +98,7 @@ if __name__ == '__main__':
             print( f" ----> TEST SCORE:  {mse_testC/mse_test:.2f} [ MSE= {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ]")
             score_table.add_row( validFold, [mse_train, mse_trainC, mse_test, mse_testC] )
 
-        print(f" AVE performance[{modelType}]: {parameters[modelType]} " )
+        print(f" AVE performance[{modelType}]: {modParms} " )
         sums: pd.DataFrame = score_table.get_sums()
         scores = [ min( sums['mse_trainC']/sums['mse_train'], 3.0 ), sums['mse_testC']/sums['mse_test'], 1.0 ]
         print( f" SCORES: train= {scores[0]}, test= {scores[1]} " )
