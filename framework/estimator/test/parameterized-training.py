@@ -14,7 +14,7 @@ nFolds= 5
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
-    mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=True ),
+    mlp=dict( max_iter=250, learning_rate="constant", solver="adam", early_stopping=False ),
     rf=dict(n_estimators=70, max_depth=20),
     svr=dict(C=5.0, gamma=0.5),
     nnr=dict( n_neighbors=5, weights='distance' ),
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             print( f"Executing {modelType} estimator, validation_fraction={validation_fraction}, fold = {validFold}, parameterList: {estimator.parameterList}" )
             pts_train, pts_test, x_train, x_test, y_train, y_test = getKFoldSplit(pts_data, x_data_norm, y_data, nFolds, validFold)
             estimator.update_parameters( validFold=validFold, validation_fraction=validation_fraction, **parameters[modelType] )
-            x_train_valid, y_train_valid = (np.concatenate( [x_train, x_test] ), np.concatenate( [y_train, y_test] ) ) if modelType == "mlp" else (x_train, y_train)
+            x_train_valid, y_train_valid = (np.concatenate( [x_train, x_test] ), np.concatenate( [y_train, y_test] ) ) if ( modelType == "mlp" and parameters['early_stopping'] )  else (x_train, y_train)
             estimator.fit( x_train_valid, y_train_valid )
             model_mean, model_std  =  y_train.mean(), y_train.std()
             const_model_train = np.full( y_train.shape, model_mean )
