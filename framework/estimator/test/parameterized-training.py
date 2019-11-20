@@ -1,58 +1,110 @@
 from bathyml.common.data import *
 import matplotlib.pyplot as plt
-from typing import List, Optional, Tuple, Dict, Any
-from time import time
-from datetime import datetime
 from sklearn import preprocessing
 from framework.estimator.base import EstimatorBase
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
+import pandas as pd
 
-modelType = "rf"
-nFolds = 5
-validFold = 1 # nFolds-1
-trainWithFullDataset = False
+
+outDir = "/Users/tpmaxwel/Dropbox/Tom/InnovationLab/results/WaterMapping"
+version= 0
+verbose = False
+nFolds= 5
+modelTypes = [ "mlp", "rf", "svr", "nnr" ]
+
+parameters = dict(
+    mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=True ),
+    rf=dict(n_estimators=70, max_depth=20),
+    svr=dict(C=5.0, gamma=0.5),
+    nnr=dict( n_neighbors=5, weights='distance' ),
+)
+
+def mean_abs_error( x: np.ndarray, y: np.ndarray ):
+    return np.mean( np.abs( x-y ), axis=0 )
 
 if __name__ == '__main__':
     print("Reading Data")
-    x_data_raw, y_data = read_csv_data( "pts_merged_final.csv"  )
+    pts_data, x_data_raw, y_data = read_csv_data( "pts_merged_final.csv"  )
     x_data_norm = preprocessing.scale( x_data_raw )
+    mseCols = ['mse_train', 'mse_trainC', 'mse_test', 'mse_testC']
+    scoreCols = [ 'trainScore', 'testScore', 'ConstantModel' ]
+    outputCols = [ 'Algorithm', "TestID", "OID", "FID", "Subset", "Actual", "Prediction" ]
+    global_score_table = IterativeTable( cols=scoreCols )
+    results_table = IterativeTable( cols=outputCols )
 
-    estimator: EstimatorBase = EstimatorBase.new( modelType )
-    print( f"Executing {modelType} estimator, parameterList: {estimator.parameterList}" )
+    for modelType in modelTypes:
+        score_table = IterativeTable( cols=mseCols )
+        for validFold in range( nFolds-1 ):
+            validation_fraction = 1.0 / nFolds if nFolds > 1 else None
+            fig, ax = plt.subplots(2,1)
+            estimator: EstimatorBase = EstimatorBase.new( modelType )
+            if validFold ==0 or verbose:
+                print( f"Executing {modelType} estimator, validation_fraction={validation_fraction}, fold = {validFold}, parameterList: {estimator.parameterList}" )
+            pts_train, pts_test, x_train, x_test, y_train, y_test = getKFoldSplit(pts_data, x_data_norm, y_data, nFolds, validFold)
+            estimator.update_parameters( validFold=validFold, validation_fraction=validation_fraction, **parameters[modelType] )
+            x_train_valid, y_train_valid = (np.concatenate( [x_train, x_test] ), np.concatenate( [y_train, y_test] ) ) if modelType == "mlp" else (x_train, y_train)
+            estimator.fit( x_train_valid, y_train_valid )
+            model_mean, model_std  =  y_train.mean(), y_train.std()
+            const_model_train = np.full( y_train.shape, model_mean )
+            const_model_test = np.full(y_test.shape, model_mean )
+            random_model_train = np.random.normal( model_mean, model_std, y_train.shape )
+            random_model_test = np.random.normal( model_mean, model_std, y_test.shape )
 
-    parameters = dict(
-        mlp = dict( max_iter=200, learning_rate="constant", early_stopping=True, solver="lbfgs", validation_fraction=1.0/nFolds ),
-        rf =  dict( n_estimators=30,  max_depth=10  ) ,
-        svr=  dict( C =5.0, gamma=0.05 ) ,
-        nnr = dict( n_neighbors=200, weights='distance' )
-    )
+            test_prediction = estimator.predict(x_test)
+            train_prediction = estimator.predict(x_train)
 
-    x_train, x_test, y_train, y_test = getKFoldSplit( x_data_norm, y_data, nFolds, validFold )
-    estimator.update_parameters( **parameters[modelType] )
-    if trainWithFullDataset:    estimator.fit( x_data_norm, y_data  )
-    else:                       estimator.fit( x_train,     y_train )
+            mse_train =  mean_abs_error( y_train, train_prediction )
+            mse_trainC = mean_abs_error( y_train, const_model_train )
+            mse_trainR = mean_abs_error( y_train, random_model_train )
+            ax[0].set_title( f"{modelType} Train Data MSE = {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ")
+            xaxis = range(train_prediction.shape[0])
+            ax[0].plot(xaxis, y_train, "b--", label="train data")
+            ax[0].plot(xaxis, train_prediction, "r--", label="prediction")
+            ax[0].legend()
 
-    test_prediction = estimator.predict(x_test)
-    train_prediction = estimator.predict(x_train)
-    fig = plt.figure()
+            mse_test =  mean_abs_error( y_test, test_prediction )
+            mse_testC = mean_abs_error( y_test, const_model_test )
+            mse_testR = mean_abs_error( y_test, random_model_test )
+            ax[1].set_title( f"{modelType} Test Data MSE = {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ")
+            xaxis = range(test_prediction.shape[0])
+            ax[1].plot(xaxis, y_test, "b--", label="test data")
+            ax[1].plot(xaxis, test_prediction, "r--", label="prediction")
+            ax[1].legend()
 
-    ax0 = plt.subplot("211")
-    mse =  math.sqrt( mean_squared_error( y_train, train_prediction ) )
-    ax0.set_title( f"{modelType} Train Data MSE = {mse:.2f} ")
-    xaxis = range(train_prediction.shape[0])
-    ax0.plot(xaxis, y_train, "b--", label="train data")
-    ax0.plot(xaxis, train_prediction, "r--", label="prediction")
-    ax0.legend()
+            print( f"Performance {modelType}-{validFold}: ")
+            print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ]")
+            print( f" ----> TEST SCORE:  {mse_testC/mse_test:.2f} [ MSE= {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ]")
+            score_table.add_row( validFold, [mse_train, mse_trainC, mse_test, mse_testC] )
 
-    ax1 = plt.subplot("212")
-    mse =  math.sqrt( mean_squared_error( y_test, test_prediction ) )
-    ax1.set_title( f"{modelType} Test Data MSE = {mse:.2f} ")
-    xaxis = range(test_prediction.shape[0])
-    ax1.plot(xaxis, y_test, "b--", label="test data")
-    ax1.plot(xaxis, test_prediction, "r--", label="prediction")
-    ax1.legend()
+            for idx in range(pts_train.shape[0]):
+                pts = pts_train[idx]
+                results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "train", y_train[idx], train_prediction[idx]])
 
-    plt.tight_layout()
+            for idx in range(pts_test.shape[0]):
+                pts = pts_test[idx]
+                results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "test", y_test[idx], test_prediction[idx]])
+
+            plt.tight_layout()
+            outFile =  os.path.join( outDir, f"plots{version}-{modelType}-{validFold}.png" )
+            print(f"Saving plots to {outFile} ")
+            plt.savefig( outFile )
+            plt.close( fig )
+
+        print(f" AVE performance[{modelType}]: {parameters[modelType]} " )
+        print( score_table )
+        sums: pd.DataFrame = score_table.get_sums()
+        scores = [ min( sums['mse_trainC']/sums['mse_train'], 3.0 ), sums['mse_testC']/sums['mse_test'], 1.0 ]
+        print( f" SCORES: train= {scores[0]}, test= {scores[1]} " )
+        global_score_table.add_row( modelType.upper(), scores )
+
+    results_path = os.path.join( outDir, f"results-{version}.csv" )
+    results_table.to_csv( results_path )
+    print( f"Saved results to '{results_path}'")
+
+    scores_table = global_score_table.get_table()
+    scores_table.to_csv( os.path.join( outDir, f"scores-{version}.csv" ) )
+    scores_table.plot.bar()
     plt.show()
+
+
+
+

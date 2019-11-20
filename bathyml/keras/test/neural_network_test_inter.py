@@ -6,6 +6,8 @@ import os, copy, sys, numpy as np, pickle
 import matplotlib.pyplot as plt
 from keras.callbacks import TensorBoard
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn import preprocessing
+from bathyml.common.data import getKFoldSplit, read_csv_data
 from time import time
 from datetime import datetime
 
@@ -18,7 +20,6 @@ outDir = os.path.join(DATA, "results")
 if not os.path.exists(outDir): os.makedirs( outDir )
 ddir = os.path.join(DATA, "csv")
 tb_log_dir=f"{ddir}/logs/tb"
-nBands = 21
 nEpochs = 1000
 learningRate=0.01
 momentum=0.9
@@ -49,12 +50,6 @@ def getLayers2( input_dim ):
 def getLayers1( input_dim ):
     return [  Dense( units=1, input_dim=input_dim, kernel_initializer = initWtsMethod )  ]
 
-def read_csv_data( fileName: str, nBands: int = 0 ) -> np.ndarray:
-    file_path: str = os.path.join( ddir, fileName )
-    raw_data_array: np.ndarray = np.loadtxt( file_path, delimiter=',')
-    if (nBands > 0): raw_data_array = raw_data_array[:,:nBands]
-    return raw_data_array
-
 def normalize( array: np.ndarray, scale = 1.5 ):
     ave = array.mean( axis=0 )
     std = array.std( axis=0 )
@@ -62,9 +57,9 @@ def normalize( array: np.ndarray, scale = 1.5 ):
 
 print( f"TensorBoard log dir: {tb_log_dir}")
 
-def get_model( index, weights = None ) -> Sequential:
+def get_model( index, input_size, weights = None ) -> Sequential:
     model = Sequential()
-    for layer in getLayers2(nBands): model.add( layer )
+    for layer in getLayers2(input_size): model.add( layer )
     sgd = SGD(learningRate, momentum, decay, nesterov)
     model.compile(loss='mse', optimizer=sgd, metrics=['accuracy'])
     if weights is not None:
@@ -96,23 +91,12 @@ def getTrainingData( x_train, y_train, x_valid, y_valid ):
     return x_train_valid, y_train_valid, validation_fraction
 
 if __name__ == '__main__':
-    x_train: np.ndarray = read_csv_data( "temp_X_train_inter.csv", nBands )
-    y_train: np.ndarray = read_csv_data( "temp_Y_train_inter.csv" )
-
-    if poly_degree > 1:
-        poly = PolynomialFeatures(poly_degree)
-        poly.fit(x_train)
-        x_train = poly.transform(x_train)
+    nFolds = 5
+    validFold = 2
+    x_data, y_data = read_csv_data( "pts_merged_final.csv"  )
+    x_train, x_valid, y_train, y_valid = getKFoldSplit(x_data, y_data, nFolds, validFold)
     nTrainSamples = x_train.shape[0]
-
-    x_valid: np.ndarray = read_csv_data( "temp_X_test_inter.csv", nBands )
-    y_valid: np.ndarray = read_csv_data( "temp_Y_test_inter.csv" )
-    if poly_degree > 1:
-        poly = PolynomialFeatures(poly_degree)
-        poly.fit(x_valid)
-        x_valid = poly.transform(x_valid)
     nValidSamples = x_valid.shape[0]
-
     x_train_valid, y_train_valid, validation_fraction = getTrainingData( x_train, y_train, x_valid, y_valid )
     input_dim = x_train.shape[1]
 
@@ -122,7 +106,7 @@ if __name__ == '__main__':
     history = {}
 
     for model_index in range( nRuns ):
-        model = get_poly_model(model_index,input_dim) if poly_degree > 1 else get_model(model_index)
+        model = get_model( model_index, input_dim )
         tensorboard = TensorBoard(log_dir=f"{tb_log_dir}/{time()}")
         history[model_index] = model.fit( x_train_valid, y_train_valid, epochs=nEpochs, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard] )
         train_loss = np.array( history[model_index].history['loss'] )

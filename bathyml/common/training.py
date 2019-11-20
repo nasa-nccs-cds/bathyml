@@ -7,6 +7,7 @@ from sklearn import preprocessing, neighbors
 from time import time
 from datetime import datetime
 from sklearn.neural_network import MLPRegressor
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.ensemble import RandomForestRegressor
 
@@ -67,11 +68,15 @@ modelParms = dict(
     epsilon=1e-8,
     n_iter_no_change=10,
   ),
-    rfr = dict(
+    rf = dict(
         n_estimators=30,
         max_features= 'sqrt',  # 'log2'  'sqrt',
         max_depth=10,
         oob_score=True
+    ),
+    krr=dict(
+        alpha=1.0,
+        gamma=0.1
     )
 )
 pca_components = 0 # 14
@@ -100,7 +105,12 @@ def getModel( modelType, p0, p1 ):
     elif modelType == "nnr":
         params['n_neighbors'] = p0
         print(f"Fitting {modelType} Model, n_neighbors={p0}")
-    elif modelType == "rfr":
+    elif modelType == "krr":
+        params['alpha'] = p0
+        params['gamma'] = p1
+        print(f"Fitting {modelType} Model")
+    elif modelType == "rf":
+        params['n_estimators'] = p0
         print(f"Fitting {modelType} Model")
     else: raise Exception( f" Unknown Model type: {modelType}")
     return getParameterizedModel(  modelType, **params )
@@ -119,8 +129,10 @@ def getParameterizedModel( modelType, **newParams ):
         return GaussianProcessRegressor(**params)
     elif modelType == "nnr":
         return neighbors.KNeighborsRegressor (**params)
-    elif modelType == "rfr":
+    elif modelType == "rf":
         return RandomForestRegressor(**params)
+    elif modelType == "krr":
+        return KernelRidge(**params)
     else: raise Exception( f" Unknown Model type: {modelType}")
 
 if __name__ == '__main__':
