@@ -11,8 +11,7 @@ version= 0
 verbose = False
 make_plots = False
 nFolds= 5
-# modelTypes = [ "mlp", "rf", "svr", "nnr" ]
-modelTypes = [ "rf" ]
+modelTypes = [ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=True ),
@@ -36,7 +35,7 @@ if __name__ == '__main__':
 
     for modelType in modelTypes:
         score_table = IterativeTable( cols=mseCols )
-        for validFold in range( 1 ): # nFolds-1 ):
+        for validFold in range( nFolds-1 ):
             validation_fraction = 1.0 / nFolds if nFolds > 1 else None
             if make_plots:
                 fig, ax = plt.subplots(2,1)
