@@ -9,8 +9,10 @@ outDir = os.path.join( scratchDir, "results", "WaterMapping" )
 if not os.path.exists(outDir): os.makedirs( outDir )
 version= 0
 verbose = False
+make_plots = False
 nFolds= 5
-modelTypes = [ "mlp", "rf", "svr", "nnr" ]
+# modelTypes = [ "mlp", "rf", "svr", "nnr" ]
+modelTypes = [ "rf" ]
 
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=True ),
@@ -34,9 +36,10 @@ if __name__ == '__main__':
 
     for modelType in modelTypes:
         score_table = IterativeTable( cols=mseCols )
-        for validFold in range( nFolds-1 ):
+        for validFold in range( 1 ): # nFolds-1 ):
             validation_fraction = 1.0 / nFolds if nFolds > 1 else None
-            fig, ax = plt.subplots(2,1)
+            if make_plots:
+                fig, ax = plt.subplots(2,1)
             estimator: EstimatorBase = EstimatorBase.new( modelType )
             if validFold ==0 or verbose:
                 print( f"Executing {modelType} estimator, validation_fraction={validation_fraction}, fold = {validFold}, parameterList: {estimator.parameterList}" )
@@ -56,20 +59,24 @@ if __name__ == '__main__':
             mse_train =  mean_abs_error( y_train, train_prediction )
             mse_trainC = mean_abs_error( y_train, const_model_train )
             mse_trainR = mean_abs_error( y_train, random_model_train )
-            ax[0].set_title( f"{modelType} Train Data MSE = {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ")
-            xaxis = range(train_prediction.shape[0])
-            ax[0].plot(xaxis, y_train, "b--", label="train data")
-            ax[0].plot(xaxis, train_prediction, "r--", label="prediction")
-            ax[0].legend()
+
+            if make_plots:
+                ax[0].set_title( f"{modelType} Train Data MSE = {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ")
+                xaxis = range(train_prediction.shape[0])
+                ax[0].plot(xaxis, y_train, "b--", label="train data")
+                ax[0].plot(xaxis, train_prediction, "r--", label="prediction")
+                ax[0].legend()
 
             mse_test =  mean_abs_error( y_test, test_prediction )
             mse_testC = mean_abs_error( y_test, const_model_test )
             mse_testR = mean_abs_error( y_test, random_model_test )
-            ax[1].set_title( f"{modelType} Test Data MSE = {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ")
-            xaxis = range(test_prediction.shape[0])
-            ax[1].plot(xaxis, y_test, "b--", label="test data")
-            ax[1].plot(xaxis, test_prediction, "r--", label="prediction")
-            ax[1].legend()
+
+            if make_plots:
+                ax[1].set_title( f"{modelType} Test Data MSE = {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ")
+                xaxis = range(test_prediction.shape[0])
+                ax[1].plot(xaxis, y_test, "b--", label="test data")
+                ax[1].plot(xaxis, test_prediction, "r--", label="prediction")
+                ax[1].legend()
 
             print( f"Performance {modelType}-{validFold}: ")
             print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ]")
@@ -78,33 +85,35 @@ if __name__ == '__main__':
 
             for idx in range(pts_train.shape[0]):
                 pts = pts_train[idx]
-                results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "train", f"{y_train[idx]}:.3f", f"{train_prediction[idx]}:.3f" ] )
+                results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "train", f"{y_train[idx]:.3f}", f"{train_prediction[idx]:.3f}" ] )
 
             for idx in range(pts_test.shape[0]):
                 pts = pts_test[idx]
                 results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "test", y_test[idx], test_prediction[idx]])
 
-            plt.tight_layout()
-            outFile =  os.path.join( outDir, f"plots{version}-{modelType}-{validFold}.png" )
-            print(f"Saving plots to {outFile} ")
-            plt.savefig( outFile )
-            plt.close( fig )
+            if make_plots:
+                plt.tight_layout()
+                outFile =  os.path.join( outDir, f"plots{version}-{modelType}-{validFold}.png" )
+                print(f"Saving plots to {outFile} ")
+                plt.savefig( outFile )
+                plt.close( fig )
 
         print(f" AVE performance[{modelType}]: {parameters[modelType]} " )
         print( score_table )
         sums: pd.DataFrame = score_table.get_sums()
         scores = [ min( sums['mse_trainC']/sums['mse_train'], 3.0 ), sums['mse_testC']/sums['mse_test'], 1.0 ]
         print( f" SCORES: train= {scores[0]}, test= {scores[1]} " )
-        global_score_table.add_row( modelType.upper(), scores )
+        if make_plots: global_score_table.add_row( modelType.upper(), scores )
 
     results_path = os.path.join( outDir, f"results-{version}.csv" )
     results_table.to_csv( results_path, index=False )
     print( f"Saved results to '{results_path}'")
 
-    scores_table = global_score_table.get_table()
-    scores_table.to_csv( os.path.join( outDir, f"scores-{version}.csv" ) )
-    scores_table.plot.bar()
-    plt.show()
+    if make_plots:
+        scores_table = global_score_table.get_table()
+        scores_table.to_csv( os.path.join( outDir, f"scores-{version}.csv" ) )
+        scores_table.plot.bar()
+        plt.show()
 
 
 
