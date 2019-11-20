@@ -4,8 +4,9 @@ from sklearn import preprocessing
 from framework.estimator.base import EstimatorBase
 import pandas as pd
 
-
-outDir = "/Users/tpmaxwel/Dropbox/Tom/InnovationLab/results/WaterMapping"
+scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
+outDir = os.path.join( scratchDir, "results", "WaterMapping" )
+os.makedirs( outDir )
 version= 0
 verbose = False
 nFolds= 5
@@ -77,7 +78,7 @@ if __name__ == '__main__':
 
             for idx in range(pts_train.shape[0]):
                 pts = pts_train[idx]
-                results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "train", y_train[idx], train_prediction[idx]])
+                results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "train", f"{y_train[idx]}:.3f", f"{train_prediction[idx]}:.3f" ] )
 
             for idx in range(pts_test.shape[0]):
                 pts = pts_test[idx]
@@ -97,7 +98,7 @@ if __name__ == '__main__':
         global_score_table.add_row( modelType.upper(), scores )
 
     results_path = os.path.join( outDir, f"results-{version}.csv" )
-    results_table.to_csv( results_path )
+    results_table.to_csv( results_path, index=False )
     print( f"Saved results to '{results_path}'")
 
     scores_table = global_score_table.get_table()
