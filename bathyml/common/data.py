@@ -60,7 +60,7 @@ class IterativeTable:
         self.get_table().to_csv( filePath, **kwargs )
 
 
-def read_csv_data( fileName: str ) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
+def read_csv_data( fileName: str, **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
     import csv
     file_path: str = os.path.join( ddir, fileName )
     with open(file_path) as csvfile:
@@ -71,6 +71,8 @@ def read_csv_data( fileName: str ) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
         fids = []
         current_fid = -1
         object_index = 0
+        nbands = kwargs.get('nbands',None)
+        end_index = -1 if nbands is None else nbands + 3
         for index,row in enumerate(csvData):
             if index == 0: headers = row
             else:
@@ -79,8 +81,9 @@ def read_csv_data( fileName: str ) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
                     object_index = object_index + 1
                 current_fid = fid
                 ydata.append( float(row[1]) )
-                xdata.append( [ float(r) for r in row[3:]] )
+                xdata.append( [ float(r) for r in row[3:end_index]] )
                 fids.append( [object_index, fid] )
+        print( f"Reading csv datra from {file_path}, headers = {headers}" )
         np_xdata = np.array( xdata )
         np_ydata = np.array( ydata )
         np_ptdata = np.array( fids )

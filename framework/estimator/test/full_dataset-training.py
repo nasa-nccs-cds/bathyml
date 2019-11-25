@@ -29,7 +29,7 @@ def mean_squared_error( x: np.ndarray, y: np.ndarray ):
 
 if __name__ == '__main__':
     print("Reading Data")
-    pts_data, x_data_raw, y_data = read_csv_data( "pts_merged_final.csv"  )
+    pts_data, x_data_raw, y_data = read_csv_data( "pts_merged_final.csv", nbands = 21  )
     x_data_norm = preprocessing.scale( x_data_raw )
     mseCols = ['mse_train', 'mse_trainC', 'mse_test', 'mse_testC']
     scoreCols = [ 'trainScore', 'testScore', 'ConstantModel' ]
