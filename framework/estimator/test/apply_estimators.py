@@ -38,7 +38,7 @@ if __name__ == '__main__':
     image_data = xa.open_rasterio( image_data_path )
     shp = image_data.shape
     masked_image_data: np.ma.MaskedArray = np.ma.masked_values( image_data.values, image_data[0,0,0] ).reshape( shp[0], shp[1]*shp[2] ).transpose()
-    ml_input_data = preprocessing.scale( masked_image_data )
+    ml_input_data: np.ma.MaskedArray = np.ma.masked_values( preprocessing.scale( masked_image_data ), float('nan') )
 
     saved_model_path = os.path.join(outDir, f"model.{modelType}.{version}.pkl")
     filehandler = open(saved_model_path, "rb")
