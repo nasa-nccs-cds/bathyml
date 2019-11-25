@@ -14,7 +14,7 @@ show_plots = False
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
-    mlp=dict( max_iter=150, learning_rate="constant", solver="adam", early_stopping=False ),
+    mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
     rf=dict(n_estimators=70, max_depth=20),
     svr=dict(C=5.0, gamma=0.5),
     nnr=dict( n_neighbors=5, weights='distance' ),
