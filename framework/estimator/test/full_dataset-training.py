@@ -9,8 +9,8 @@ outDir = os.path.join( scratchDir, "results", "WaterMapping" )
 if not os.path.exists(outDir): os.makedirs( outDir )
 version= 2
 verbose = False
-make_plots = True
-show_plots = True
+make_plots = False
+show_plots = False
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
