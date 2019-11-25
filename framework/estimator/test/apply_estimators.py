@@ -34,7 +34,8 @@ def mean_squared_error( x: np.ndarray, y: np.ndarray ):
 
 if __name__ == '__main__':
     print("Reading Data")
-    image_data_path = os.path.join( dataDir, "image", "LC08_L1TP_076011_20170630_20170715_01_T1_StackBandsAndRatios_6bands.tif" )
+    image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
+#    image_data_path = os.path.join( dataDir, "image", "LC08_L1TP_076011_20170630_20170715_01_T1_StackBandsAndRatios_6bands.tif" )
     image_data = xa.open_rasterio( image_data_path )
     shp = image_data.shape
     masked_image_data: np.ma.MaskedArray = np.ma.masked_values( image_data.values, image_data[0,0,0] ).reshape( shp[0], shp[1]*shp[2] ).transpose()
