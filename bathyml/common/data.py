@@ -123,12 +123,14 @@ def getTrainingData( x_train, y_train, x_valid, y_valid ) -> Tuple[np.ndarray,np
     return x_train_valid, y_train_valid
 
 def getKFoldSplit( ptsData: np.ndarray, xData: np.ndarray, ydata: np.ndarray, nFolds: int, validFold: int, **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+    if nFolds < 2: return ptsData, np.empty([0,0]), xData, np.empty(0), ydata, np.empty([0,0])
     splitter = KFold( n_splits=nFolds, shuffle=kwargs.get("shuffle", False) )
     folds = list( splitter.split( xData ) )
     train_indices, test_indices = folds[validFold]
     return  ptsData[train_indices], ptsData[test_indices], xData[train_indices], xData[test_indices], ydata[train_indices], ydata[test_indices]
 
 def getSplit( x_data: np.ndarray, y_data: np.ndarray, validation_fraction: float ) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+    if validation_fraction == 0.0: return x_data, np.empty([0,0]), y_data, np.empty([0,0])
     NValidationElems = int( round( x_data.shape[0] * validation_fraction ) )
     NTrainingElems = x_data.shape[0] - NValidationElems
     x_train = x_data[:NTrainingElems]

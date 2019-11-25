@@ -7,14 +7,16 @@ import pandas as pd
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
 outDir = os.path.join( scratchDir, "results", "WaterMapping" )
 if not os.path.exists(outDir): os.makedirs( outDir )
-version= 0
+version= 1
 verbose = False
 make_plots = False
-nFolds= 5
+nFolds= 1
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
 
+# modelTypes = [ "mlp" ]
+
 parameters = dict(
-    mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
+    mlp=dict( max_iter=150, learning_rate="constant", solver="adam", early_stopping=False ),
     rf=dict(n_estimators=70, max_depth=20),
     svr=dict(C=5.0, gamma=0.5),
     nnr=dict( n_neighbors=5, weights='distance' ),
@@ -32,12 +34,13 @@ if __name__ == '__main__':
     outputCols = [ 'Algorithm', "TestID", "OID", "FID", "Subset", "Actual", "Prediction" ]
     global_score_table = IterativeTable( cols=scoreCols )
     results_table = IterativeTable( cols=outputCols )
+    folds = range( nFolds-1 ) if nFolds > 1 else [0]
 
     for modelType in modelTypes:
         score_table = IterativeTable( cols=mseCols )
-        for validFold in range( nFolds-1 ):
-            validation_fraction = 1.0 / nFolds if nFolds > 1 else None
-            modParms = parameters[modelType]
+        modParms = parameters[modelType]
+        for validFold in folds:
+            validation_fraction = 1.0 / nFolds if ( nFolds > 1 and modParms['early_stopping'] ) else 0.0
             if make_plots:
                 fig, ax = plt.subplots(2,1)
             estimator: EstimatorBase = EstimatorBase.new( modelType )
@@ -51,10 +54,9 @@ if __name__ == '__main__':
             const_model_test = np.full(y_test.shape, model_mean )
             random_model_train = np.random.normal( model_mean, model_std, y_train.shape )
             random_model_test = np.random.normal( model_mean, model_std, y_test.shape )
+            print( f"Performance {modelType}-{validFold}: ")
 
-            test_prediction = estimator.predict(x_test)
             train_prediction = estimator.predict(x_train)
-
             mse_train =  mean_abs_error( y_train, train_prediction )
             mse_trainC = mean_abs_error( y_train, const_model_train )
             mse_trainR = mean_abs_error( y_train, random_model_train )
@@ -66,25 +68,32 @@ if __name__ == '__main__':
                 ax[0].plot(xaxis, train_prediction, "r--", label="prediction")
                 ax[0].legend()
 
-            mse_test =  mean_abs_error( y_test, test_prediction )
-            mse_testC = mean_abs_error( y_test, const_model_test )
-            mse_testR = mean_abs_error( y_test, random_model_test )
-            print( f"MAE: {mse_test} {mse_testC} {mse_testR} " )
-
-            if make_plots:
-                ax[1].set_title( f"{modelType} Test Data MSE = {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ")
-                xaxis = range(test_prediction.shape[0])
-                ax[1].plot(xaxis, y_test, "b--", label="test data")
-                ax[1].plot(xaxis, test_prediction, "r--", label="prediction")
-                ax[1].legend()
 
             for idx in range(pts_train.shape[0]):
                 pts = pts_train[idx]
                 results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "train", f"{y_train[idx]:.3f}", f"{train_prediction[idx]:.3f}" ] )
 
-            for idx in range(pts_test.shape[0]):
-                pts = pts_test[idx]
-                results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "test", y_test[idx], test_prediction[idx]])
+            print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ]")
+
+            if nFolds > 1:
+                test_prediction = estimator.predict(x_test)
+                mse_test =  mean_abs_error( y_test, test_prediction )
+                mse_testC = mean_abs_error( y_test, const_model_test )
+                mse_testR = mean_abs_error( y_test, random_model_test )
+                print( f"MAE: {mse_test} {mse_testC} {mse_testR} " )
+
+                if make_plots:
+                    ax[1].set_title( f"{modelType} Test Data MSE = {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ")
+                    xaxis = range(test_prediction.shape[0])
+                    ax[1].plot(xaxis, y_test, "b--", label="test data")
+                    ax[1].plot(xaxis, test_prediction, "r--", label="prediction")
+                    ax[1].legend()
+
+                print(f" ----> TEST SCORE:  {mse_testC / mse_test:.2f} [ MSE= {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ]")
+
+                for idx in range(pts_test.shape[0]):
+                    pts = pts_test[idx]
+                    results_table.add_row(data = [modelType, validFold, pts[0], pts[1], "test", y_test[idx], test_prediction[idx]])
 
             if make_plots:
                 plt.tight_layout()
@@ -93,9 +102,6 @@ if __name__ == '__main__':
                 plt.savefig( outFile )
                 plt.close( fig )
 
-            print( f"Performance {modelType}-{validFold}: ")
-            print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f} R={mse_trainR:.2f} ]")
-            print( f" ----> TEST SCORE:  {mse_testC/mse_test:.2f} [ MSE= {mse_test:.2f}: C={mse_testC:.2f} R={mse_testR:.2f} ]")
             score_table.add_row( validFold, [mse_train, mse_trainC, mse_test, mse_testC] )
 
         print(f" AVE performance[{modelType}]: {modParms} " )
