@@ -5,7 +5,7 @@ from framework.estimator.base import EstimatorBase
 import pandas as pd
 
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
-outDir = os.path.join( scratchDir, "results", "WaterMapping" )
+outDir = os.path.join( scratchDir, "results", "Bathymetry" )
 if not os.path.exists(outDir): os.makedirs( outDir )
 version= 2
 verbose = False
