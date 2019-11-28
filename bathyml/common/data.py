@@ -71,8 +71,6 @@ def read_csv_data( fileName: str, **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.n
         fids = []
         current_fid = -1
         object_index = 0
-        nbands = kwargs.get('nbands',None)
-        end_index = -1 if nbands is None else nbands + 3
         for index,row in enumerate(csvData):
             if index == 0: headers = row
             else:
@@ -81,7 +79,7 @@ def read_csv_data( fileName: str, **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.n
                     object_index = object_index + 1
                 current_fid = fid
                 ydata.append( float(row[1]) )
-                xdata.append( [ float(r) for r in row[3:end_index]] )
+                xdata.append( [ float(r) for r in row[3:] ] )
                 fids.append( [object_index, fid] )
         print( f"Reading csv datra from {file_path}, headers = {headers}" )
         np_xdata = np.array( xdata )
