@@ -19,7 +19,7 @@ modelType = modelTypes[2]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
-subset = True
+subset = False
 
 def mean_abs_error( x: np.ndarray, y: np.ndarray ):
     return np.mean( np.abs( x-y ), axis=0 )
