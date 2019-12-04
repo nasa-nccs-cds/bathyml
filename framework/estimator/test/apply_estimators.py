@@ -30,7 +30,7 @@ def mean_squared_error( x: np.ndarray, y: np.ndarray ):
     diff =  x-y
     return np.sqrt( np.mean( diff*diff, axis=0 ) )
 
-def preprocess( x: xa.DataArray, subset = False ):
+def preprocess( x: xa.DataArray ):
     nodataval = x.nodatavals[0]
     xm: xa.DataArray = x.where( x != nodataval )
     mean = xm.mean( dim=space_dims, skipna=True )
@@ -39,11 +39,12 @@ def preprocess( x: xa.DataArray, subset = False ):
     return results.stack( z=space_dims ).transpose().fillna(0.0).squeeze()
 
 if __name__ == '__main__':
-    process_manager = None
+
     if localTestRun:
+        process_manager = None
         image_data_path = os.path.join(dataDir, "image", "LC8_080010_20160709_stack_clip.tif")
     else:
-        cluster_parameters = { }
+        cluster_parameters = { "log.scheduler.metrics": True }
         process_manager = SlurmProcessManager.initManager( cluster_parameters )
         image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
 
@@ -53,7 +54,7 @@ if __name__ == '__main__':
     input_image = full_input_image[ :, 1100:1400, 1100:1400 ] if subset else full_input_image
     space_coords = { key: input_image.coords[key].values for key in space_dims }
 
-    ml_input_data: xa.DataArray = preprocess( input_image, True )
+    ml_input_data: xa.DataArray = preprocess( input_image )
 
     saved_model_path = os.path.join( outDir, f"model.{modelType}.{version}.pkl" )
     filehandler = open(saved_model_path, "rb")
