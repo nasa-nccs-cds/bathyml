@@ -1,6 +1,7 @@
 from bathyml.common.data import *
 from geoproc.plot.animation import ArrayListAnimation
 from geoproc.xext.xgeo import XGeo
+from geoproc.cluster.slurm import SlurmProcessManager
 import xarray as xa
 import time
 
@@ -20,6 +21,7 @@ space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
 subset = False
+localTestRun = True
 
 def mean_abs_error( x: np.ndarray, y: np.ndarray ):
     return np.mean( np.abs( x-y ), axis=0 )
@@ -37,9 +39,14 @@ def preprocess( x: xa.DataArray, subset = False ):
     return results.stack( z=space_dims ).transpose().fillna(0.0).squeeze()
 
 if __name__ == '__main__':
+    process_manager = None
+    if localTestRun:
+        image_data_path = os.path.join(dataDir, "image", "LC8_080010_20160709_stack_clip.tif")
+    else:
+        cluster_parameters = { }
+        process_manager = SlurmProcessManager.initManager( cluster_parameters )
+        image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
 
-    image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
-#    image_data_path = os.path.join( dataDir, "image", "LC8_080010_20160709_stack_clip.tif" )
     image_name = os.path.splitext(os.path.basename(image_data_path))[0]
     print( f"Reading data from file {image_data_path}")
     full_input_image: xa.DataArray = xa.open_rasterio( image_data_path, chunks=(35,1000,1000) )
