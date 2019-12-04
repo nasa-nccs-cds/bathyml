@@ -38,8 +38,8 @@ def preprocess( x: xa.DataArray, subset = False ):
 
 if __name__ == '__main__':
 
-#    image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
-    image_data_path = os.path.join( dataDir, "image", "LC8_080010_20160709_stack_clip.tif" )
+    image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
+#    image_data_path = os.path.join( dataDir, "image", "LC8_080010_20160709_stack_clip.tif" )
     image_name = os.path.splitext(os.path.basename(image_data_path))[0]
     print( f"Reading data from file {image_data_path}")
     full_input_image: xa.DataArray = xa.open_rasterio( image_data_path, chunks=(35,1000,1000) )
