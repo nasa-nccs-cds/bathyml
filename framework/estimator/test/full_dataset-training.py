@@ -7,7 +7,7 @@ import pandas as pd
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
 outDir = os.path.join( scratchDir, "results", "Bathymetry" )
 if not os.path.exists(outDir): os.makedirs( outDir )
-version= "T1"
+version= "T2"
 verbose = False
 make_plots = False
 show_plots = False
@@ -16,8 +16,8 @@ modelTypes = [ "mlp", "rf", "svr", "nnr" ]
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
     rf=dict(n_estimators=70, max_depth=20),
-    svr=dict(C=5.0, gamma=0.5),
-    nnr=dict( n_neighbors=6, weights='distance', leaf_size=3 ),
+    svr=dict(C=5.0, gamma=0.5, cache_size=2000 ),
+    nnr=dict( n_neighbors=3, weights='distance', algorithm = 'kd_tree', leaf_size=30, metric="euclidean" ),
 )
 
 def mean_abs_error( x: np.ndarray, y: np.ndarray ):
@@ -49,7 +49,7 @@ if __name__ == '__main__':
             fig, ax = plt.subplots(1)
         estimator: EstimatorBase = EstimatorBase.new( modelType )
         estimator.update_parameters( **modParms )
-        print( f"Executing {modelType} estimator, parameters: {estimator.instance_parameters}" )
+        print( f"Executing {modelType} estimator, parameters: { estimator.instance_parameters.items() } " )
         estimator.fit( x_data_norm, y_data )
         model_mean  =  y_data.mean()
         const_model_train = np.full( y_data.shape, model_mean )

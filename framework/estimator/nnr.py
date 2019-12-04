@@ -11,8 +11,8 @@ class Estimator(EstimatorBase):
     @property
     def default_parameters(self) -> Dict:
         return dict(
-            n_neighbors=60,
-            weights='uniform',  # 'uniform','distance'
+            n_neighbors=5,
+            weights='distance',  # 'uniform','distance'
             algorithm='auto',
             leaf_size=30,
             p=2,
