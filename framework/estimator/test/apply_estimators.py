@@ -21,7 +21,7 @@ space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
 subset = False
-localTestRun = True
+localTestRun = False
 
 def mean_abs_error( x: np.ndarray, y: np.ndarray ):
     return np.mean( np.abs( x-y ), axis=0 )
