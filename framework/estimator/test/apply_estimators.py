@@ -57,11 +57,12 @@ if __name__ == '__main__':
 
     print( f"Executing {modelType} estimator: {saved_model_path}, parameters: { list(estimator.instance_parameters.items()) }" )
     ml_results: xa.DataArray = xa.apply_ufunc( estimator.predict, ml_input_data, input_core_dims=[['band']], dask="parallelized", output_dtypes=[np.float] )
+    t1 = time.time()
     depth_map_data: np.ndarray = ml_results.values.reshape(input_image.shape[1:])
     result_map = xa.DataArray( depth_map_data, coords=space_coords, dims=space_dims, name="depth_map" )
     depth_map = result_map.where( result_map != nodata_output, 0.0 )
 
-    print( "Completed execution in time " + str( time.time() - t0 ) + " secs" )
+    print( f"Completed execution in {(time.time()-t0)/60.0} min, (postprocessing took {t1-t0} sec)" )
 
     if saveNetcdf:
         depth_map_path = os.path.join(outDir, f"depthMap.{image_name}.{version}.nc")
