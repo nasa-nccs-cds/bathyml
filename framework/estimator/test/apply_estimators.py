@@ -63,7 +63,7 @@ if __name__ == '__main__':
     t0 = time.time()
 
     print( f"Executing {modelType} estimator: {saved_model_path}, parameters: { list(estimator.instance_parameters.items()) }" )
-    ml_results: xa.DataArray = xa.apply_ufunc( estimator.predict, ml_input_data, input_core_dims=[['band']], dask="parallelized", output_dtypes=[np.float] )
+    ml_results: xa.DataArray = xa.apply_ufunc( estimator.predict, ml_input_data, input_core_dims=[['band']], dask="parallelized", output_dtypes=[np.float] ).compute( sync=True )
     t1 = time.time()
     depth_map_data: np.ndarray = ml_results.values.reshape(input_image.shape[1:])
     result_map = xa.DataArray( depth_map_data, coords=space_coords, dims=space_dims, name="depth_map" )
