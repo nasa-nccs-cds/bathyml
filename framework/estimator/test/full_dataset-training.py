@@ -11,7 +11,7 @@ version= "T2"
 verbose = False
 make_plots = False
 show_plots = False
-modelTypes =  [ "svr" ] # [ "mlp", "rf", "svr", "nnr" ]
+modelTypes =  [ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
