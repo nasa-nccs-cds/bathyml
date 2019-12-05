@@ -1,6 +1,7 @@
 from bathyml.common.data import *
 from geoproc.xext.xgeo import XGeo
 from geoproc.cluster.slurm import ClusterManager
+import joblib
 import xarray as xa
 import time
 
@@ -19,7 +20,7 @@ modelType = modelTypes[2]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
-localTest = False
+localTest = True
 
 if localTest:
     subset = True
@@ -64,11 +65,11 @@ if __name__ == '__main__':
         nodata_output = estimator.predict( np.zeros( [1, input_image.shape[0]] ) )[0]
 
         print( f"Executing {modelType} estimator: {saved_model_path}, parameters: { list(estimator.instance_parameters.items()) }" )
-        ml_results: xa.DataArray = xa.apply_ufunc( estimator.predict, ml_input_data, input_core_dims=[['band']], dask="parallelized", output_dtypes=[np.float] ).compute( sync=True )
+        ml_results: xa.DataArray = xa.apply_ufunc( estimator.predict, ml_input_data, input_core_dims=[['band']], dask="parallelized", output_dtypes=[float] )
+        depth_map_data: np.ndarray = ml_results.values.reshape(input_image.shape[1:])
 
         t1 = time.time()
 
-        depth_map_data: np.ndarray = ml_results.values.reshape(input_image.shape[1:])
         result_map = xa.DataArray( depth_map_data, coords=space_coords, dims=space_dims, name="depth_map" )
         depth_map = result_map.where( result_map != nodata_output, 0.0 )
 

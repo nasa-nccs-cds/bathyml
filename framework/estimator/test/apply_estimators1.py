@@ -2,7 +2,7 @@ from bathyml.common.data import *
 from geoproc.xext.xgeo import XGeo
 from geoproc.cluster.slurm import ClusterManager
 import xarray as xa
-import time
+import time, joblib
 
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
 outDir = os.path.join( scratchDir, "results", "Bathymetry" )
@@ -19,7 +19,7 @@ modelType = modelTypes[3]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
-localTest = False
+localTest = True
 
 if localTest:
     subset = True
@@ -68,8 +68,9 @@ if __name__ == '__main__':
 
         t1 = time.time()
 
-        print( f"Executing {modelType} estimator: {saved_model_path}, parameters: { list(estimator.instance_parameters.items()) }" )
-        ml_results: xa.DataArray = estimator.predict( ml_input_data )
+        with joblib.parallel_backend('dask'):
+            print( f"Executing {modelType} estimator: {saved_model_path}, parameters: { list(estimator.instance_parameters.items()) }" )
+            ml_results: np.ndarray = estimator.predict( ml_input_data )
 
         t2 = time.time()
 
