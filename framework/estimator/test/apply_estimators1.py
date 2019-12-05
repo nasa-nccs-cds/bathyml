@@ -19,7 +19,7 @@ modelType = modelTypes[3]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
-localTest = True
+localTest = False
 
 if localTest:
     subset = True
