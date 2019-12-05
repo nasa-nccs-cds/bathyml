@@ -1,5 +1,4 @@
 from bathyml.common.data import *
-from geoproc.plot.animation import ArrayListAnimation
 from geoproc.xext.xgeo import XGeo
 from geoproc.cluster.slurm import SlurmProcessManager
 import xarray as xa
