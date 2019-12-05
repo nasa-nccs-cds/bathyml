@@ -15,14 +15,20 @@ verbose = False
 make_plots = False
 show_plots = False
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
-modelType = modelTypes[2]
+modelType = modelTypes[3]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
-subset = True
-image_data_path = os.path.join(dataDir, "image", "LC8_080010_20160709_stack_clip.tif")
-# image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
-cluster_parameters = { "log.scheduler.metrics": True }
+localTest = False
+
+if localTest:
+    subset = True
+    image_data_path = os.path.join(dataDir, "image", "LC8_080010_20160709_stack_clip.tif")
+    cluster_parameters = {}
+else:
+    subset = False
+    image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
+    cluster_parameters = { "log.scheduler.metrics": True, 'type': 'slurm' }
 
 def mean_abs_error( x: np.ndarray, y: np.ndarray ):
     return np.mean( np.abs( x-y ), axis=0 )
