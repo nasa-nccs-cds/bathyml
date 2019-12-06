@@ -1,6 +1,6 @@
 from bathyml.common.data import *
 from geoproc.xext.xgeo import XGeo
-from geoproc.cluster.slurm import ClusterManager
+from geoproc.cluster.manager import ClusterManager
 import joblib
 import xarray as xa
 import time
@@ -16,16 +16,16 @@ verbose = False
 make_plots = False
 show_plots = False
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
-modelType = modelTypes[2]
+modelType = modelTypes[3]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
 localTest = True
 
 if localTest:
-    subset = True
+    subset = False
     image_data_path = os.path.join(dataDir, "image", "LC8_080010_20160709_stack_clip.tif")
-    cluster_parameters = {}
+    cluster_parameters = { 'type': 'local' }
 else:
     subset = False
     image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
