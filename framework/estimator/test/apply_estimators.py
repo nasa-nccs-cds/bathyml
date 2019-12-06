@@ -20,7 +20,7 @@ modelType = modelTypes[3]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
-localTest = True
+localTest = False
 
 if localTest:
     subset = False
@@ -58,8 +58,9 @@ if __name__ == '__main__':
 
         image_name = os.path.splitext(os.path.basename(image_data_path))[0]
         print( f"Reading data from file {image_data_path}")
-        full_input_image: xa.DataArray = xa.open_rasterio( image_data_path, chunks=(35,1000,1000) )
+        full_input_image: xa.DataArray = xa.open_rasterio( image_data_path, chunks=(100,150,10000) )
         input_image = full_input_image[ :, 1100:1400, 1100:1400 ] if subset else full_input_image
+        print( f" input_image.chunks: {[ str(chunk) for chunk in input_image.chunks]}" )
         space_coords = { key: input_image.coords[key].values for key in space_dims }
         ml_input_data: xa.DataArray = preprocess( input_image )
         nodata_output = estimator.predict( np.zeros( [1, input_image.shape[0]] ) )[0]
