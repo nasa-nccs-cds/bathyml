@@ -11,12 +11,12 @@ if not os.path.exists(outDir): os.makedirs( outDir )
 thisDir = os.path.dirname(os.path.abspath(__file__))
 dataDir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(thisDir))), "data")
 
-version= "T2"
+version= "T1"
 verbose = False
 make_plots = False
 show_plots = False
 modelTypes = [ "mlp", "rf", "svr", "nnr" ]
-modelType = modelTypes[3]
+modelType = modelTypes[1]
 space_dims = ["y", "x"]
 saveNetcdf = True
 saveGeotiff = True
@@ -25,11 +25,11 @@ localTest = False
 if localTest:
     subset = False
     image_data_path = os.path.join(dataDir, "image", "LC8_080010_20160709_stack_clip.tif")
-    cluster_parameters = { 'type': 'local' }
+    cluster_parameters = { "log.scheduler.metrics": False, 'type': 'local' }
 else:
     subset = False
     image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
-    cluster_parameters = { "log.scheduler.metrics": True, 'type': 'slurm' }
+    cluster_parameters = { "log.scheduler.metrics": False, 'type': 'slurm' }
 
 def mean_abs_error( x: np.ndarray, y: np.ndarray ):
     return np.mean( np.abs( x-y ), axis=0 )
@@ -58,7 +58,7 @@ if __name__ == '__main__':
 
         image_name = os.path.splitext(os.path.basename(image_data_path))[0]
         print( f"Reading data from file {image_data_path}")
-        full_input_image: xa.DataArray = xa.open_rasterio( image_data_path, chunks=(100,150,10000) )
+        full_input_image: xa.DataArray = xa.open_rasterio( image_data_path, chunks=(1000,160,100000) )
         input_image = full_input_image[ :, 1100:1400, 1100:1400 ] if subset else full_input_image
         print( f" input_image.chunks: {[ str(chunk) for chunk in input_image.chunks]}" )
         space_coords = { key: input_image.coords[key].values for key in space_dims }

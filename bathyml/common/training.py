@@ -81,7 +81,7 @@ modelParms = dict(
 )
 pca_components = 0 # 14
 whiten = False
-modelType = "nnr"
+modelType = "rf"
 validation_fraction=0.2
 
 def get_parm_name( svmArgs: Dict ) -> str:
@@ -137,7 +137,7 @@ def getParameterizedModel( modelType, **newParams ):
 
 if __name__ == '__main__':
     print("Reading Data")
-    x_data, y_data = read_csv_data( "pts_merged_final.csv"  )
+    pt_data, x_data, y_data = read_csv_data( "pts_merged_final.csv"  )
     mParams = modelParms[modelType]
 
     if pca_components > 0:

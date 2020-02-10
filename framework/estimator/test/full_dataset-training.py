@@ -7,11 +7,11 @@ import pandas as pd
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
 outDir = os.path.join( scratchDir, "results", "Bathymetry" )
 if not os.path.exists(outDir): os.makedirs( outDir )
-version= "T2"
+version= "T3"
 verbose = False
 make_plots = False
 show_plots = False
-modelTypes =  [ "mlp", "rf", "svr", "nnr" ]
+modelTypes =  ["rf"] #[ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
