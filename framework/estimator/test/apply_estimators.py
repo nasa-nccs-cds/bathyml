@@ -11,7 +11,7 @@ if not os.path.exists(outDir): os.makedirs( outDir )
 thisDir = os.path.dirname(os.path.abspath(__file__))
 dataDir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(thisDir))), "data")
 
-version= "T1"
+version= "T3"
 verbose = False
 make_plots = False
 show_plots = False
@@ -29,7 +29,7 @@ if localTest:
 else:
     subset = False
     image_data_path = "/att/nobackup/maronne/lake/rasterStacks/080010/LC8_080010_20160709_stack_clip.tif"
-    cluster_parameters = { "log.scheduler.metrics": False, 'type': 'slurm' }
+    cluster_parameters = { "log.scheduler.metrics": False, 'type': 'slurm', 'cores': 8 }
 
 def mean_abs_error( x: np.ndarray, y: np.ndarray ):
     return np.mean( np.abs( x-y ), axis=0 )
