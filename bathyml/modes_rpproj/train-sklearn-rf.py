@@ -1,6 +1,5 @@
 from bathyml.common.data import *
 import matplotlib.pyplot as plt
-from sklearn import preprocessing
 from framework.estimator.base import EstimatorBase
 import pandas as pd
 
@@ -27,11 +26,6 @@ def mean_squared_error( x: np.ndarray, y: np.ndarray ):
     diff =  x-y
     return np.sqrt( np.mean( diff*diff, axis=0 ) )
 
-def scale( x: np.ndarray ):
-    mean = np.mean( x, axis=0 )
-    std = np.std( x, axis=0 )
-    return ( x - mean ) / std
-
 def shuffle_data(input_data, training_data ): #  -> ( shuffled_input_data, shuffled_training_data):
     indices = np.arange(input_data.shape[0])
     np.random.shuffle(indices)
@@ -43,7 +37,7 @@ def shuffle_data(input_data, training_data ): #  -> ( shuffled_input_data, shuff
 if __name__ == '__main__':
     print("Reading Data")
     pts_data, x_data_raw, y_data = read_csv_data( "pts_merged_final.csv" )
-    x_data_norm = scale( x_data_raw[:,0:n_inputs] )
+    x_data_norm = EstimatorBase.normalize( x_data_raw[:,0:n_inputs] )
 
     if make_plots:
         fig, ax = plt.subplots()

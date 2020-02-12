@@ -87,11 +87,6 @@ def read_csv_data( fileName: str, **kwargs ) -> Tuple[np.ndarray,np.ndarray,np.n
         np_ptdata = np.array( fids )
         return np_ptdata, np_xdata, np_ydata
 
-def normalize( array: np.ndarray ):
-    ave = array.mean( axis=0 )
-    std = array.std( axis=0 )
-    return (array-ave)/std, ave, std
-
 def rescale( array: np.ndarray, ave, std ):
     return array*std + ave
 

@@ -19,12 +19,6 @@ def array_to_tif( inarr, outfile, imgProperties ):
     drv.GetRasterBand(1).WriteArray(inarr)
     return outfile
 
-def normalize( array: np.ndarray, scalef = 1.5 ):
-    ave = array.mean( axis=0 )
-    std = array.std( axis=0 )
-    scale = scalef * std
-    return (array-ave)/scale, scale, std
-
 def apply_model( image_name, modelName):
     VHRstack = os.path.join(VHRdir, image_name)
     (img, imgProperties) = stack_to_obj(VHRstack)

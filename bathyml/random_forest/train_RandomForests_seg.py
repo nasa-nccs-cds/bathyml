@@ -675,11 +675,6 @@ def interleave( a0: np.ndarray, a1: np.ndarray ) -> np.ndarray:
         result[1::2, :] = a1[0:alen]
     return result
 
-def normalize( array: np.ndarray, scale = 1.5 ):
-    ave = array.mean( axis=0 )
-    std = array.std( axis=0 )
-    return (array-ave)/(scale*std)
-
 def read_band_data( validation_fraction ):
 
     bandExtr_fieldList = ['b2_0760NA', 'b3_0760NA', 'b4_0760NA', 'b5_0760NA', 'b6_0760NA', 'b7_0760NA', 'b14_0760NA',

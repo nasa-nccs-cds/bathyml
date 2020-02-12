@@ -39,6 +39,17 @@ class EstimatorBase:
     def _constructor(self) -> Type[BaseEstimator]: pass
 
     @classmethod
+    def mean_squared_error(cls, x: np.ndarray, y: np.ndarray):
+        diff = x - y
+        return np.sqrt(np.mean(diff * diff, axis=0))
+
+    @classmethod
+    def normalize( cls, x: np.ndarray, scale = 1.5 ):
+        x0 = x - x.mean( axis=0 )
+        mag = x0.std( axis=0 )
+        return x0 / (mag*scale)
+
+    @classmethod
     def new(cls, etype, **parms ) -> "EstimatorBase":
         module = __import__( "framework.estimator." + etype )
         estimator_module = getattr( module.estimator, etype )
@@ -47,6 +58,17 @@ class EstimatorBase:
 
     def fit( self, xdata: np.ndarray, ydata: np.ndarray,  **kwargs ):
         self.instance.fit( xdata, ydata, **kwargs )
+
+    def feature_importance( self, xdata: np.ndarray, ydata: np.ndarray,  **kwargs ):
+        prediction = self.instance.predict(xdata)
+        mse0 =  self.mean_squared_error( ydata, prediction )
+        importance = []
+        for iFeature in range( xdata.shape[1] ):
+            xdata1 = self.shuffle_feature( xdata, iFeature )
+            prediction1 = self.instance.predict(xdata1)
+            mse1 = self.mean_squared_error(ydata, prediction1)
+            importance.append( mse1-mse0 )
+        return np.array( importance )
 
     def predict( self, xdata: np.ndarray, *args, **kwargs ) -> np.ndarray:
         return self.instance.predict( xdata, *args, **kwargs )

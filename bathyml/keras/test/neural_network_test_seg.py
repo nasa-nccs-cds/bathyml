@@ -66,11 +66,6 @@ def getLayers( input_dim ):
     if nLayers == 3: return getLayers3( input_dim )
     if nLayers == 4: return getLayers4( input_dim )
 
-def normalize( array: np.ndarray, scale = 1.5 ):
-    ave = array.mean( axis=0 )
-    std = array.std( axis=0 )
-    return (array-ave)/(scale*std)
-
 print( f"TensorBoard log dir: {tb_log_dir}")
 
 def get_model( index, input_dim, weights = None ) -> Sequential:

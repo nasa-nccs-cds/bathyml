@@ -41,11 +41,6 @@ def getLayers2( input_dim ):
 def getLayers1( input_dim ):
     return [  Dense( units=1, input_dim=input_dim, kernel_initializer = initWtsMethod )  ]
 
-def normalize( array: np.ndarray, scale = 1.5 ):
-    ave = array.mean( axis=0 )
-    std = array.std( axis=0 )
-    return (array-ave)/(scale*std)
-
 def get_model( index, input_size, weights = None ) -> Sequential:
     model = Sequential()
     for layer in getLayers2(input_size): model.add( layer )
