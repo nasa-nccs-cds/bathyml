@@ -44,9 +44,9 @@ class EstimatorBase:
         return np.sqrt(np.mean(diff * diff, axis=0))
 
     @classmethod
-    def normalize( cls, x: np.ndarray, scale = 1.5 ):
-        x0 = x - x.mean( axis=0 )
-        mag = x0.std( axis=0 )
+    def normalize( cls, x: np.ndarray, axis=0, scale = 1.5 ):
+        x0 = x - x.mean( axis=axis, keepdims=True )
+        mag = x0.std( axis=axis, keepdims=True )
         return x0 / (mag*scale)
 
     @classmethod

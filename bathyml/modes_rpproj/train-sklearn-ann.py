@@ -37,7 +37,7 @@ def shuffle_data(input_data, training_data ): #  -> ( shuffled_input_data, shuff
 if __name__ == '__main__':
     print("Reading Data")
     pts_data, x_data_raw, y_data = read_csv_data( "pts_merged_final.csv" )
-    x_data_norm = EstimatorBase.normalize( x_data_raw[:,0:n_inputs] )
+    x_data_norm = EstimatorBase.normalize( x_data_raw[:,0:n_inputs], 1 )
 
     if make_plots:
         fig, ax = plt.subplots()
