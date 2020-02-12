@@ -7,11 +7,11 @@ import pandas as pd
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
 outDir = os.path.join( scratchDir, "results", "Bathymetry" )
 if not os.path.exists(outDir): os.makedirs( outDir )
-version= "T3"
+nVersions = 1
+n_inputs = 35
 verbose = False
+modelType =  "rf" #[ "mlp", "rf", "svr", "nnr" ]
 make_plots = True
-show_plots = True
-modelTypes =  ["rf"] #[ "mlp", "rf", "svr", "nnr" ]
 
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
@@ -32,21 +32,26 @@ def scale( x: np.ndarray ):
     std = np.std( x, axis=0 )
     return ( x - mean ) / std
 
+def shuffle_data(input_data, training_data ): #  -> ( shuffled_input_data, shuffled_training_data):
+    indices = np.arange(input_data.shape[0])
+    np.random.shuffle(indices)
+    shuffled_input_data, shuffled_training_data = np.copy(input_data), np.copy(training_data)
+    shuffled_input_data[:] = input_data[indices]
+    shuffled_training_data[:] = training_data[indices]
+    return ( shuffled_input_data, shuffled_training_data)
+
 if __name__ == '__main__':
     print("Reading Data")
     pts_data, x_data_raw, y_data = read_csv_data( "pts_merged_final.csv" )
-    x_data_norm = scale( x_data_raw )
-    mseCols = ['mse_train', 'mse_trainC', 'mse_test', 'mse_testC']
-    scoreCols = [ 'trainScore', 'testScore', 'ConstantModel' ]
-    outputCols = [ 'Algorithm', "OID", "FID", "Subset", "Actual", "Prediction" ]
-    global_score_table = IterativeTable( cols=scoreCols )
-    results_table = IterativeTable( cols=outputCols )
+    x_data_norm = scale( x_data_raw[:,0:n_inputs] )
 
-    for modelType in modelTypes:
-        score_table = IterativeTable( cols=mseCols )
+    if make_plots:
+        fig, ax = plt.subplots()
+    else: fig, ax = None, None
+
+    for iVersion in range(nVersions):
         modParms = parameters[modelType]
-        if make_plots:
-            fig, ax = plt.subplots(1)
+        modParms['random_state'] = iVersion
         estimator: EstimatorBase = EstimatorBase.new( modelType )
         estimator.update_parameters( **modParms )
         print( f"Executing {modelType} estimator, parameters: { estimator.instance_parameters.items() } " )
@@ -59,11 +64,13 @@ if __name__ == '__main__':
         mse_train =  mean_squared_error( y_data, train_prediction )
         mse_trainC = mean_squared_error( y_data, const_model_train )
 
-        for idx in range(pts_data.shape[0]):
-            pts = pts_data[idx]
-            results_table.add_row(data=[modelType, pts[0], pts[1], "train", f"{y_data[idx]:.3f}", f"{train_prediction[idx]:.3f}"])
-
         print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f}  ]")
+
+        saved_model_path = os.path.join( outDir, f"model.{modelType}.T{iVersion}.pkl")
+        filehandler = open(saved_model_path,"wb")
+        pickle.dump( estimator, filehandler )
+        print( f"Saved {modelType}.{iVersion} Estimator to file {saved_model_path}" )
+
 
         if make_plots:
             ax.set_title( f"{modelType} Train Data MSE = {mse_train:.2f}: C={mse_trainC:.2f} ")
@@ -73,22 +80,10 @@ if __name__ == '__main__':
             ax.plot(xaxis, const_model_train, "r--", label="const_model")
             ax.legend()
             plt.tight_layout()
-            outFile =  os.path.join( outDir, f"plots{version}-{modelType}.png" )
-            print(f"Saving plots to {outFile} ")
-            plt.savefig( outFile )
-            if show_plots: plt.show()
+            # outFile =  os.path.join( outDir, f"plots{iVersion}-{modelType}.png" )
+            # print(f"Saving plots to {outFile} ")
+            # plt.savefig( outFile )
+            plt.show()
             plt.close( fig )
-
-        saved_model_path = os.path.join( outDir, f"model.{modelType}.{version}.pkl")
-        filehandler = open(saved_model_path,"wb")
-        pickle.dump( estimator, filehandler )
-        print( f"Saved {modelType} Estimator to file {saved_model_path}" )
-
-    results_path = os.path.join( outDir, f"results-{version}.csv" )
-    results_table.to_csv( results_path, index=False )
-    print( f"Saved results to '{results_path}'")
-
-
-
 
 

@@ -289,21 +289,21 @@ class LearningModel(object):
                         parms[toks[0]] = toks[1].strip()
         return LearningModel( inputDataset, trainingDataset, layers, **parms )
 
-    # @classmethod
-    # def load( cls, path ):
-    #     # type: (str) -> ( LearningModel, FitResult )
-    #     file = open( path, "r")
-    #     lines = file.readlines()
-    #     inputDataset = InputDataset.deserialize(lines)
-    #     trainingDataset = TrainingDataset.deserialize( lines )
-    #     learningModel = LearningModel.deserialize( inputDataset, trainingDataset, lines )
-    #     result = FitResult.deserialize( lines )
-    #     return ( learningModel, result )
-    #
-    # @classmethod
-    # def loadInstance( cls, instance ):
-    #     # type: (str) -> ( LearningModel, FitResult )
-    #     return cls.load( os.path.join( RESULTS_DIR, instance ) )
+    @classmethod
+    def load( cls, path ):
+        # type: (str) -> ( LearningModel, FitResult )
+        file = open( path, "r")
+        lines = file.readlines()
+        inputDataset = InputDataset.deserialize(lines)
+        trainingDataset = TrainingDataset.deserialize( lines )
+        learningModel = LearningModel.deserialize( inputDataset, trainingDataset, lines )
+        result = FitResult.deserialize( lines )
+        return ( learningModel, result )
+
+    @classmethod
+    def loadInstance( cls, instance ):
+        # type: (str) -> ( LearningModel, FitResult )
+        return cls.load( os.path.join( RESULTS_DIR, instance ) )
 
     def reseed(self):
         seed = random.randint(0, 2 ** 32 - 2)
@@ -329,33 +329,6 @@ class LearningModel(object):
         model.set_weights( fitResult.final_weights )
 #        model.fit( self.inputData, self.outputData, batch_size=self.batchSize, epochs=fitResult.nEpocs, validation_split=self.validation_fraction, shuffle=self.shuffle, verbose=0 )  # type: History
         return model
-
-    # @classmethod
-    # def getActivationBackProjection( cls, instance, target_value, iLayer = -1, iHiddenUnit = 0, learning_rate = 0.002 ):
-    #     import keras.backend as K
-    #     learningModel, result = cls.loadInstance( instance )
-    #     model = learningModel.getFittedModel( result )
-    #
-    #     out_diff = K.mean( (model.layers[-1].output - target_value ) ** 2 ) if iHiddenUnit is None else  K.abs( model.layers[-2].output[0, iHiddenUnit] - target_value )
-    #     grad = K.gradients(out_diff, [model.input])[0]
-    #     grad /= K.maximum(K.sqrt(K.mean(grad ** 2)), K.epsilon())
-    #     iterate = K.function( [model.input, K.learning_phase()], [out_diff, grad] )
-    #     input_img_data = np.zeros( shape=model.weights[0].shape[::-1] )
-    #     print("Back Projection Map, instance = " + instance + ", Iterations:")
-    #     out_loss = 0.0
-    #     for i1 in range(5):
-    #         for i2 in range(500):
-    #             out_loss, out_grad = iterate([input_img_data, 0])
-    #             input_img_data -= out_grad * learning_rate
-    #             if out_loss < 0.01:
-    #                 print("  --> Converged, niters = " + str(i1*500+i2) + ": loss = " + str(out_loss))
-    #                 break
-    #         if( out_loss > 1.0 ):
-    #             learning_rate = learning_rate * 2.0
-    #             print("    ** Doubling Learning Rate: niters = " + str( (i1+1) * 500 ) + ": loss = " + str(out_loss))
-    #         elif out_loss < 0.01: break
-    #
-    #     return ( learningModel, model, input_img_data[0] )
 
     def createSequentialModel( self )-> Sequential:
         model = Sequential()

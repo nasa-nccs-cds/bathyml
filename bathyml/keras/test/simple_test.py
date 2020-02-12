@@ -23,7 +23,6 @@ nRuns = 1
 nesterov=False
 initWtsMethod="glorot_uniform"   # lecun_uniform glorot_normal glorot_uniform he_normal lecun_normal he_uniform
 activation='relu' # 'tanh'
-print( f"TensorBoard log dir: {tb_log_dir}")
 
 x_training_data: str = os.path.join(ddir, "temp_X_train.csv")
 y_training_data: str = os.path.join(ddir, "temp_Y_train.csv")
@@ -51,8 +50,7 @@ for model_index in range( nRuns ):
     x_train_resorted = x_train[ index_permutation ]
     y_train_resorted = y_train[ index_permutation ]
 
-    tensorboard = TensorBoard(log_dir=f"{tb_log_dir}/{time()}")
-    history = model.fit( x_train_resorted, y_train_resorted, epochs=nEpochs, validation_split=validation_fraction, verbose=0, shuffle=shuffle, callbacks=[tensorboard] )
+    history = model.fit( x_train_resorted, y_train_resorted, epochs=nEpochs, validation_split=validation_fraction, verbose=0, shuffle=shuffle )
 
     val_loss = np.array( history.history['val_loss'] )
     final_val_loss = val_loss[-1]
