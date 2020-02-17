@@ -56,8 +56,16 @@ class EstimatorBase:
         my_class = getattr( estimator_module, "Estimator" )
         return my_class(**parms)
 
+    def shuffle_data(self, input_data, training_data):  # -> ( shuffled_input_data, shuffled_training_data):
+        indices = np.arange(input_data.shape[0])
+        np.random.shuffle(indices)
+        shuffled_input_data, shuffled_training_data = np.copy(input_data), np.copy(training_data)
+        shuffled_input_data[:] = input_data[indices]
+        shuffled_training_data[:] = training_data[indices]
+        return (shuffled_input_data, shuffled_training_data)
+
     def fit( self, xdata: np.ndarray, ydata: np.ndarray,  **kwargs ):
-        self.instance.fit( xdata, ydata, **kwargs )
+        self.instance.fit( *self.shuffle_data( xdata, ydata ), **kwargs )
 
     def feature_importance( self, xdata: np.ndarray, ydata: np.ndarray,  **kwargs ):
         prediction = self.instance.predict(xdata)

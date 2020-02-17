@@ -1,16 +1,18 @@
 from bathyml.common.data import *
 import matplotlib.pyplot as plt
 from framework.estimator.base import EstimatorBase
+import random
 import pandas as pd
 
 scratchDir = os.environ.get( "ILSCRATCH", os.path.expanduser("~/ILAB/scratch") )
 outDir = os.path.join( scratchDir, "results", "Bathymetry" )
 if not os.path.exists(outDir): os.makedirs( outDir )
-nVersions = 1
+nVersions = 8
 n_inputs = 35
 verbose = False
-modelType =  "rf" #[ "mlp", "rf", "svr", "nnr" ]
-make_plots = True
+modelType =  "mlp" #[ "mlp", "rf", "svr", "nnr" ]
+make_plots = False
+random.seed(9001)
 
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
@@ -34,16 +36,26 @@ def shuffle_data(input_data, training_data ): #  -> ( shuffled_input_data, shuff
     shuffled_training_data[:] = training_data[indices]
     return ( shuffled_input_data, shuffled_training_data)
 
+
+def shuffle_feature( input_data: np.ndarray, iFeature: int ) -> np.ndarray:
+    features = np.split( input_data, input_data.shape[1], axis=1 )
+    shuffled_feature = np.copy( features[ iFeature ] )
+    np.random.shuffle( shuffled_feature )
+    features[iFeature] = shuffled_feature
+    result = np.stack( features, axis=1 ).squeeze()
+    return result
+
 if __name__ == '__main__':
     print("Reading Data")
-    pts_data, x_data_raw, y_data = read_csv_data( "pts_merged_final.csv" )
-    x_data_norm = EstimatorBase.normalize( x_data_raw[:,0:n_inputs] )
+    pts_data, x_data_raw, y_data0 = read_csv_data( "pts_merged_final.csv" )
+    x_data_norm0 = EstimatorBase.normalize( x_data_raw[:,0:n_inputs] )
 
     if make_plots:
         fig, ax = plt.subplots()
     else: fig, ax = None, None
 
     for iVersion in range(nVersions):
+        x_data_norm, y_data = shuffle_data( x_data_norm0, y_data0 )
         modParms = parameters[modelType]
         modParms['random_state'] = iVersion
         estimator: EstimatorBase = EstimatorBase.new( modelType )
@@ -57,6 +69,8 @@ if __name__ == '__main__':
         train_prediction = estimator.predict(x_data_norm)
         mse_train =  mean_squared_error( y_data, train_prediction )
         mse_trainC = mean_squared_error( y_data, const_model_train )
+
+#        feature_importance = estimator.feature_importance( x_data_norm, y_data )
 
         print( f" ----> TRAIN SCORE: {mse_trainC/mse_train:.2f} [ MSE= {mse_train:.2f}: C={mse_trainC:.2f}  ]")
 
