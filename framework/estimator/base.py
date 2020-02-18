@@ -81,6 +81,9 @@ class EstimatorBase:
     def predict( self, xdata: np.ndarray, *args, **kwargs ) -> np.ndarray:
         return self.instance.predict( xdata, *args, **kwargs )
 
+    def score( self, xdata: np.ndarray, ydata: np.ndarray, **kwargs ) -> np.ndarray:
+        return self.instance.score( xdata, ydata, **kwargs )
+
     def gridSearch( self, xdata: np.ndarray, ydata: np.ndarray, param_grid: List[Dict[str,List]], nFolds=5, **kwargs ):
         kwargs["n_jobs"]    = kwargs.get( "n_jobs", -1 )
         kwargs["cv"]        = kwargs.get( "cv", KFold( n_splits=nFolds, shuffle=False ))

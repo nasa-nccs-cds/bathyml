@@ -11,7 +11,7 @@ nVersions = 5
 n_inputs = 35
 verbose = False
 modelTypes = [  "rf" ] # [  "mlp", "rf","nnr", "svr" ]
-show_plots = False
+show_plots = True
 
 parameters = dict(
     mlp=dict( max_iter=500, learning_rate="constant", solver="adam", early_stopping=False ),
