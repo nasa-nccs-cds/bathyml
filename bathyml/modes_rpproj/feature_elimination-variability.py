@@ -37,7 +37,7 @@ if __name__ == '__main__':
     n_estimators = 50
     max_depth = 20
     nFeatures = 4
-    nproc = 1
+    nproc = 8
 
     pts_data, x_data_raw, y_data_raw = read_csv_data( "pts_merged_final.csv" )
     x_data_norm: np.ndarray = EstimatorBase.normalize(x_data_raw)
