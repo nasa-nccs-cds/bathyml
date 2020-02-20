@@ -33,7 +33,7 @@ if __name__ == '__main__':
     print("Reading Data")
     n_folds = 5
     reduction_step = 1
-    nTrials = 2
+    nTrials = 100
     n_estimators = 50
     max_depth = 20
     nFeatures = 4
