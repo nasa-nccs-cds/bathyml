@@ -31,7 +31,7 @@ def feature_reduction( estimator, x_data_train, y_data_train, x_data_test, y_dat
 
 if __name__ == '__main__':
     print("Reading Data")
-    n_folds = 5
+    n_folds = 4
     reduction_step = 1
     nTrials = 100
     n_estimators = 50
